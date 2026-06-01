@@ -17,7 +17,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 @Entity
-@Data
+@Table(name = "app_user")
 public class User {
 
 		@Id
