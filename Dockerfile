@@ -8,8 +8,5 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jdk-jammy
 WORKDIR /app
 COPY --from=build /app/target/Instahyre-0.0.1-SNAPSHOT.jar app.jar
-COPY entrypoint.sh entrypoint.sh
-RUN chmod +x entrypoint.sh
-
 EXPOSE 8080
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
