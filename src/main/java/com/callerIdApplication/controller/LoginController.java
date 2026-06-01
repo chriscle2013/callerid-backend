@@ -1,7 +1,7 @@
 package com.callerIdApplication.controller;
 
-import java.util.Map;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,35 +15,27 @@ import com.callerIdApplication.entity.LoginDTO;
 import com.callerIdApplication.exceptions.LoginException;
 import com.callerIdApplication.services.LoginService;
 
-
 @RestController
 public class LoginController {
 
-	@Autowired
-	private LoginService customerLogin;
-	
-	@PostMapping("/login")
-public ResponseEntity<?> logInCustomer(@RequestBody LoginDTO dto) throws LoginException {
+    @Autowired
+    private LoginService customerLogin;
     
-    String uuid = customerLogin.logIntoAccount(dto);
-    
-    // Devolver un JSON estructurado
-    return new ResponseEntity<>(
-        Map.of(
-            "userId", dto.getPhoneNumber(),
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, String>> logInCustomer(@RequestBody LoginDTO dto) throws LoginException {
+        
+        String uuid = customerLogin.logIntoAccount(dto);
+        
+        return ResponseEntity.ok(Map.of(
+            "message", "Login Successful",
             "uuid", uuid,
+            "phoneNumber", dto.getPhoneNumber(),
             "localDateTime", LocalDateTime.now().toString()
-        ),
-        HttpStatus.OK
-    );
-}
-	
-	@PostMapping("/logout")
-	public String logoutCustomer(@RequestParam(required = false) String key) throws LoginException {
-		return customerLogin.logOutFromAccount(key);
-		
-	}
-	
-	
-	
+        ));
+    }
+    
+    @PostMapping("/logout")
+    public String logoutCustomer(@RequestParam(required = false) String key) throws LoginException {
+        return customerLogin.logOutFromAccount(key);
+    }
 }
