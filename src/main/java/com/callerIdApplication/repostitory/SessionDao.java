@@ -8,9 +8,9 @@ import com.callerIdApplication.entity.CurrentUserSession;
 @Repository
 public interface SessionDao extends JpaRepository<CurrentUserSession, Integer> {
     
-    // Este método ya debería existir (para buscar por UUID)
+    // Buscar por UUID (para logout)
     CurrentUserSession findByUuid(String uuid);
     
-    // 👇 ESTE ES EL MÉTODO NUEVO QUE DEBES AGREGAR (si no existe)
+    // Buscar por UserId (para login)
     CurrentUserSession findByUserId(Integer userId);
 }
