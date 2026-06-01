@@ -1,6 +1,7 @@
 package com.callerIdApplication.controller;
 
-
+import java.util.Map;
+import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,16 +23,20 @@ public class LoginController {
 	private LoginService customerLogin;
 	
 	@PostMapping("/login")
-	public ResponseEntity<String> logInCustomer(@RequestBody LoginDTO dto) throws LoginException {
-		
-		String result = customerLogin.logIntoAccount(dto);
-		
-
-		
-		return new ResponseEntity<String>(result,HttpStatus.OK );
-		
-		
-	}
+public ResponseEntity<?> logInCustomer(@RequestBody LoginDTO dto) throws LoginException {
+    
+    String uuid = customerLogin.logIntoAccount(dto);
+    
+    // Devolver un JSON estructurado
+    return new ResponseEntity<>(
+        Map.of(
+            "userId", dto.getPhoneNumber(),
+            "uuid", uuid,
+            "localDateTime", LocalDateTime.now().toString()
+        ),
+        HttpStatus.OK
+    );
+}
 	
 	@PostMapping("/logout")
 	public String logoutCustomer(@RequestParam(required = false) String key) throws LoginException {
