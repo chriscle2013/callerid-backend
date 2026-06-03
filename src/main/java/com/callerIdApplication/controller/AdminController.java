@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin")
@@ -88,35 +89,41 @@ public class AdminController {
     }
     
     @PostMapping("/reports/{id}/toggle-spam")
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> toggleSpam(@PathVariable Long id, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return ResponseEntity.status(401).build();
-        }
-        
-        Map<String, Object> response = new HashMap<>();
-        
-        try {
-            Report report = reportDao.findById(id).orElse(null);
-            if (report != null) {
-                boolean newStatus = !report.isSpammer();
-                report.setSpammer(newStatus);
-                reportDao.save(report);
-                
-                response.put("success", true);
-                response.put("newStatus", newStatus);
-                response.put("message", newStatus ? "Número marcado como SPAM" : "Número desmarcado como SPAM");
-            } else {
-                response.put("success", false);
-                response.put("message", "Reporte no encontrado");
-            }
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Error: " + e.getMessage());
-        }
-        
-        return ResponseEntity.ok(response);
+@ResponseBody
+public ResponseEntity<Map<String, Object>> toggleSpam(@PathVariable Long id, HttpSession session) {
+    Map<String, Object> response = new HashMap<>();
+    
+    // Verificar sesión de admin
+    if (session.getAttribute("admin_logged") == null) {
+        response.put("success", false);
+        response.put("message", "No autorizado");
+        return ResponseEntity.status(401).body(response);
     }
+    
+    try {
+        Optional<Report> reportOpt = reportDao.findById(id);
+        if (reportOpt.isPresent()) {
+            Report report = reportOpt.get();
+            boolean newStatus = !report.isSpammer();
+            report.setSpammer(newStatus);
+            reportDao.save(report);
+            
+            response.put("success", true);
+            response.put("newStatus", newStatus);
+            response.put("message", newStatus ? "Número marcado como SPAM" : "Número marcado como seguro");
+            response.put("reportId", id);
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("success", false);
+            response.put("message", "Reporte no encontrado con ID: " + id);
+            return ResponseEntity.status(404).body(response);
+        }
+    } catch (Exception e) {
+        response.put("success", false);
+        response.put("message", "Error: " + e.getMessage());
+        return ResponseEntity.status(500).body(response);
+    }
+}
     
     @GetMapping("/logout")
     public String logout(HttpSession session) {
