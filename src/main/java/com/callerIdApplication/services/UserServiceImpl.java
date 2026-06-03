@@ -1,7 +1,9 @@
 package com.callerIdApplication.services;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -161,101 +163,98 @@ public class UserServiceImpl implements UserService {
 
 
 	@Override
-	public List<?> searchPersonByNumber(String Number,String key) throws UserException {
-		CurrentUserSession currentUserSession= sessionDao.findByUuid(key);
-		if(currentUserSession==null)
+	public List<?> searchPersonByNumber(String Number, String key) throws UserException {
+		CurrentUserSession currentUserSession = sessionDao.findByUuid(key);
+		if (currentUserSession == null)
 			throw new UserException("Login First");
 
-		Optional<User> existingUserOptional=cDao.findById(currentUserSession.getUserId());
+		Optional<User> existingUserOptional = cDao.findById(currentUserSession.getUserId());
+
+		User user = cDao.findByphoneNumber(Number);
 		
-		User user= cDao.findByphoneNumber(Number);
-		if(user==null)
-		{
-			List<Contact> contacts= contactDao.getAllContactByphoneNumber(Number);
-			List<Spam> result=new ArrayList<>();
-			if(contacts.size()==0)
-			{
-				Spam spam=new Spam();
+		if (user == null) {
+			List<Contact> contacts = contactDao.getAllContactByphoneNumber(Number);
+			List<Map<String, Object>> result = new ArrayList<>();
+			
+			if (contacts.size() == 0) {
+				// Buscar si ya existe un reporte en la tabla Spam
+				List<Spam> existingSpam = spamDao.findBynumber(Number);
+				if (existingSpam != null && !existingSpam.isEmpty()) {
+					Map<String, Object> map = new HashMap<>();
+					map.put("name", existingSpam.get(0).getName());
+					map.put("number", existingSpam.get(0).getNumber());
+					map.put("spammer", existingSpam.get(0).getSpammer());
+					result.add(map);
+					return result;
+				}
+				
+				// Crear nuevo registro (spammer = true)
+				Map<String, Object> map = new HashMap<>();
+				map.put("name", "Unknown");
+				map.put("number", Number);
+				map.put("spammer", true);
+				result.add(map);
+				
+				// También guardar en la base de datos
+				Spam spam = new Spam();
 				spam.setName("Unknown");
 				spam.setNumber(Number);
 				spam.setSpammer(true);
-				Spam spam2= spamDao.save(spam);
-				 result.add(spam2);
-				 return result;
+				spamDao.save(spam);
+				
+				return result;
 			}
 			
-			List<Spam> spams= spamDao.findBynumber(Number);
-			if(spams.size()==0)
-			{
-				for(Contact c:contacts)
-				{
-					Spam spam=new Spam();
-					spam.setName(c.getName());
-					spam.setNumber(c.getNumber());
-					spam.setSpammer(false);
-					spams.add(spam);
+			List<Spam> spams = spamDao.findBynumber(Number);
+			if (spams.size() == 0) {
+				for (Contact c : contacts) {
+					Map<String, Object> map = new HashMap<>();
+					map.put("name", c.getName());
+					map.put("number", c.getNumber());
+					map.put("spammer", false);
+					result.add(map);
 				}
-				
-				return spams;
+				return result;
 			}
-				
 			
-			
-			for(Contact c:contacts)
-			{
-				for(Spam s:spams)
-				{
-					if(c.getNumber().equals(s.getNumber()) && c.getName().equals(s.getName()))
-					{
-						Spam spam=new Spam();
-						spam.setSpamID(s.getSpamID());
-						spam.setName(c.getName());
-						spam.setNumber(c.getNumber());
-						spam.setSpammer(true);
-						result.add(spam);
-					}
-					else {
-						Spam spam=new Spam();
-						spam.setName(c.getName());
-						spam.setNumber(c.getNumber());
-						spam.setSpammer(false);
-						result.add(spam);
+			for (Contact c : contacts) {
+				boolean found = false;
+				for (Spam s : spams) {
+					if (c.getNumber().equals(s.getNumber()) && c.getName().equals(s.getName())) {
+						Map<String, Object> map = new HashMap<>();
+						map.put("name", c.getName());
+						map.put("number", c.getNumber());
+						map.put("spammer", true);
+						result.add(map);
+						found = true;
+						break;
 					}
 				}
+				if (!found) {
+					Map<String, Object> map = new HashMap<>();
+					map.put("name", c.getName());
+					map.put("number", c.getNumber());
+					map.put("spammer", false);
+					result.add(map);
+				}
 			}
-			
-			
-			
-			
 			return result;
 			
-		}
-		else {
+		} else {
+			List<Map<String, Object>> result = new ArrayList<>();
+			Map<String, Object> map = new HashMap<>();
+			map.put("name", user.getUserName());
+			map.put("number", user.getPhoneNumber());
 			
-			Optional<Spam> sOptional= spamDao.findById(user.getUserId());
-			
-			if(sOptional.isPresent())
-			{
-				List<Spam> spams=new ArrayList<>();
-				spams.add(sOptional.get());
-				return spams;
+			// Verificar si está en la tabla Spam
+			List<Spam> existingSpam = spamDao.findBynumber(Number);
+			if (existingSpam != null && !existingSpam.isEmpty()) {
+				map.put("spammer", existingSpam.get(0).getSpammer());
+			} else {
+				map.put("spammer", false);
 			}
-			
-			if(user.getUserId().equals(existingUserOptional.get().getUserId()))
-			{
-				List<String> strings=new ArrayList<>();
-				String gmailString=existingUserOptional.get().getEmail();
-				strings.add(gmailString);
-				return strings;
-			}
-			List<Spam> list=new ArrayList<>();
-			
-			Spam spam=new Spam();
-			spam.setName(user.getUserName());
-			spam.setNumber(user.getPhoneNumber());
-			spam.setSpammer(false);
-			list.add(spam);
-			return list;
+			result.add(map);
+			return result;
 		}
 	}
 }
