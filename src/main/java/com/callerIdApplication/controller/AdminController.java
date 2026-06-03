@@ -97,9 +97,13 @@ public class AdminController {
                 boolean newStatus = !report.isSpammer();
                 report.setSpammer(newStatus);
                 reportDao.save(report);
+                System.out.println("✅ Reporte ID " + id + " cambiado a spammer=" + newStatus);
+            } else {
+                System.out.println("❌ Reporte no encontrado con ID: " + id);
             }
         } catch (Exception e) {
-            System.out.println("Error toggling spam: " + e.getMessage());
+            System.out.println("❌ Error toggling spam: " + e.getMessage());
+            e.printStackTrace();
         }
         
         return "redirect:/admin/reports";
