@@ -29,22 +29,22 @@
                         </thead>
                         <tbody>
                             <tr th:each="report : ${reports}">
-                                <td th:text="${report.id}" class="report-id">1</td>
+                                <td th:text="${report.id}">1</td>
                                 <td><code th:text="${report.phoneNumber}">3001234567</code></td>
                                 <td th:text="${report.category}">spam</td>
                                 <td th:text="${report.comment}">Comentario</td>
-                                <td class="spam-status">
+                                <td>
                                     <span th:if="${report.spammer}" class="badge bg-danger">🚨 SPAM</span>
                                     <span th:unless="${report.spammer}" class="badge bg-success">✅ Seguro</span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm toggle-spam-btn" 
-                                        th:classappend="${report.spammer} ? 'btn-success' : 'btn-warning'"
-                                        th:data-id="${report.id}"
-                                        th:data-current="${report.spammer}">
-                                        <i th:classappend="${report.spammer} ? 'fa-check' : 'fa-flag'" class="fas"></i>
-                                        <span th:text="${report.spammer} ? 'Marcar como seguro' : 'Marcar como spam'">Marcar</span>
-                                    </button>
+                                    <form th:action="@{/admin/reports/{id}/toggle-spam(id=${report.id})}" method="post" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm" 
+                                            th:classappend="${report.spammer} ? 'btn-success' : 'btn-warning'">
+                                            <i th:classappend="${report.spammer} ? 'fa-check' : 'fa-flag'" class="fas"></i>
+                                            <span th:text="${report.spammer} ? 'Marcar como seguro' : 'Marcar como spam'">Marcar</span>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(reports)}">
@@ -62,68 +62,11 @@
         <div class="alert alert-info mt-4">
             <i class="fas fa-info-circle"></i> <strong>Instrucciones:</strong>
             <ul class="mb-0 mt-2">
-                <li>Para marcar un número como SPAM, haz clic en "Marcar como spam"</li>
-                <li>Para quitar la marca de SPAM, haz clic en "Marcar como seguro"</li>
+                <li>Haz clic en "Marcar como seguro" para quitar la marca de SPAM</li>
+                <li>Haz clic en "Marcar como spam" para marcar un número como SPAM</li>
                 <li>La página se recargará automáticamente después del cambio</li>
             </ul>
         </div>
     </div>
-    
-    <script>
-        // Esperar a que el DOM esté completamente cargado
-        document.addEventListener('DOMContentLoaded', function() {
-            // Seleccionar todos los botones de toggle
-            var buttons = document.querySelectorAll('.toggle-spam-btn');
-            
-            buttons.forEach(function(button) {
-                button.addEventListener('click', function() {
-                    var reportId = this.getAttribute('data-id');
-                    var currentStatus = this.getAttribute('data-current') === 'true';
-                    
-                    console.log('Toggle spam para reporte ID:', reportId);
-                    console.log('Estado actual:', currentStatus);
-                    
-                    // Cambiar texto del botón mientras se procesa
-                    var originalText = this.innerHTML;
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-                    this.disabled = true;
-                    
-                    // Hacer la petición fetch
-                    fetch('/admin/reports/' + reportId + '/toggle-spam', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': application/json'
-                        }
-                    })
-                    .then(function(response) {
-                        console.log('Respuesta status:', response.status);
-                        if (!response.ok) {
-                            throw new Error('Error HTTP: ' + response.status);
-                        }
-                        return response.json();
-                    })
-                    .then(function(data) {
-                        console.log('Respuesta data:', data);
-                        if (data.success) {
-                            // Recargar la página para ver los cambios
-                            location.reload();
-                        } else {
-                            alert('Error: ' + data.message);
-                            // Restaurar botón
-                            button.innerHTML = originalText;
-                            button.disabled = false;
-                        }
-                    })
-                    .catch(function(error) {
-                        console.error('Error:', error);
-                        alert('Error de conexión: ' + error.message);
-                        // Restaurar botón
-                        button.innerHTML = originalText;
-                        button.disabled = false;
-                    });
-                });
-            });
-        });
-    </script>
 </body>
 </html>
