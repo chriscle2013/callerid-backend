@@ -10,7 +10,9 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(name = "phone_number")
     private String phoneNumber;
+    
     private String category;
     private String comment;
     private boolean spammer;
