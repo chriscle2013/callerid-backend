@@ -1,21 +1,17 @@
 package com.callerIdApplication.controller;
 
-import com.callerIdApplication.entity.CurrentUserSession;
 import com.callerIdApplication.entity.Report;
 import com.callerIdApplication.entity.User;
 import com.callerIdApplication.repostitory.ReportDao;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Controller
@@ -89,41 +85,25 @@ public class AdminController {
     }
     
     @PostMapping("/reports/{id}/toggle-spam")
-@ResponseBody
-public ResponseEntity<Map<String, Object>> toggleSpam(@PathVariable Long id, HttpSession session) {
-    Map<String, Object> response = new HashMap<>();
-    
-    // Verificar sesión de admin
-    if (session.getAttribute("admin_logged") == null) {
-        response.put("success", false);
-        response.put("message", "No autorizado");
-        return ResponseEntity.status(401).body(response);
-    }
-    
-    try {
-        Optional<Report> reportOpt = reportDao.findById(id);
-        if (reportOpt.isPresent()) {
-            Report report = reportOpt.get();
-            boolean newStatus = !report.isSpammer();
-            report.setSpammer(newStatus);
-            reportDao.save(report);
-            
-            response.put("success", true);
-            response.put("newStatus", newStatus);
-            response.put("message", newStatus ? "Número marcado como SPAM" : "Número marcado como seguro");
-            response.put("reportId", id);
-            return ResponseEntity.ok(response);
-        } else {
-            response.put("success", false);
-            response.put("message", "Reporte no encontrado con ID: " + id);
-            return ResponseEntity.status(404).body(response);
+    public String toggleSpam(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) {
+            return "redirect:/admin/login";
         }
-    } catch (Exception e) {
-        response.put("success", false);
-        response.put("message", "Error: " + e.getMessage());
-        return ResponseEntity.status(500).body(response);
+        
+        try {
+            Optional<Report> reportOpt = reportDao.findById(id);
+            if (reportOpt.isPresent()) {
+                Report report = reportOpt.get();
+                boolean newStatus = !report.isSpammer();
+                report.setSpammer(newStatus);
+                reportDao.save(report);
+            }
+        } catch (Exception e) {
+            System.out.println("Error toggling spam: " + e.getMessage());
+        }
+        
+        return "redirect:/admin/reports";
     }
-}
     
     @GetMapping("/logout")
     public String logout(HttpSession session) {
