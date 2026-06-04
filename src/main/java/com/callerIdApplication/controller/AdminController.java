@@ -1,14 +1,21 @@
 package com.callerIdApplication.controller;
 
+import com.callerIdApplication.entity.CurrentUserSession;
+import com.callerIdApplication.entity.Report;
 import com.callerIdApplication.entity.User;
+import com.callerIdApplication.repostitory.ReportDao;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/admin")
@@ -19,6 +26,9 @@ public class AdminController {
     
     @Autowired
     private SessionDao sessionDao;
+    
+    @Autowired
+    private ReportDao reportDao;
     
     private static final String ADMIN_PASSWORD = "admin123";
     
@@ -44,9 +54,11 @@ public class AdminController {
         
         long totalUsers = userDao.count();
         long activeSessions = sessionDao.count();
+        long totalReports = reportDao.count();
         
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("activeSessions", activeSessions);
+        model.addAttribute("totalReports", totalReports);
         model.addAttribute("page", "admin/dashboard");
         return "admin/layout";
     }
@@ -61,6 +73,49 @@ public class AdminController {
         model.addAttribute("users", allUsers);
         model.addAttribute("page", "admin/numbers");
         return "admin/layout";
+    }
+    
+    @GetMapping("/reports")
+    public String listReports(Model model, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) {
+            return "redirect:/admin/login";
+        }
+        
+        List<Report> allReports = reportDao.findAll();
+        model.addAttribute("reports", allReports);
+        model.addAttribute("page", "admin/reports");
+        return "admin/layout";
+    }
+    
+    @PostMapping("/reports/{id}/toggle-spam")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> toggleSpam(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) {
+            return ResponseEntity.status(401).build();
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            Report report = reportDao.findById(id).orElse(null);
+            if (report != null) {
+                boolean newStatus = !report.isSpammer();
+                report.setSpammer(newStatus);
+                reportDao.save(report);
+                
+                response.put("success", true);
+                response.put("newStatus", newStatus);
+                response.put("message", newStatus ? "Número marcado como SPAM" : "Número desmarcado como SPAM");
+            } else {
+                response.put("success", false);
+                response.put("message", "Reporte no encontrado");
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+        }
+        
+        return ResponseEntity.ok(response);
     }
     
     @GetMapping("/logout")
