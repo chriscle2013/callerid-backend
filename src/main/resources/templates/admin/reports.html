@@ -38,12 +38,13 @@
                                     <span th:unless="${report.spammer}" class="badge bg-success">✅ Seguro</span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm" 
-                                        th:classappend="${report.spammer} ? 'btn-success' : 'btn-warning'"
-                                        th:onclick="'toggleSpam(' + ${report.id} + ', this)'">
-                                        <i th:classappend="${report.spammer} ? 'fa-check' : 'fa-flag'" class="fas"></i>
-                                        <span th:text="${report.spammer} ? 'Marcar como seguro' : 'Marcar como spam'">Marcar</span>
-                                    </button>
+                                    <form th:action="@{/admin/reports/{id}/toggle-spam(id=${report.id})}" method="post" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm" 
+                                            th:classappend="${report.spammer} ? 'btn-success' : 'btn-warning'">
+                                            <i th:classappend="${report.spammer} ? 'fa-check' : 'fa-flag'" class="fas"></i>
+                                            <span th:text="${report.spammer} ? 'Marcar como seguro' : 'Marcar como spam'">Marcar</span>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(reports)}">
@@ -61,34 +62,11 @@
         <div class="alert alert-info mt-4">
             <i class="fas fa-info-circle"></i> <strong>Instrucciones:</strong>
             <ul class="mb-0 mt-2">
-                <li>Para marcar un número como SPAM, haz clic en el botón correspondiente</li>
-                <li>Para quitar la marca de SPAM, haz clic en "Marcar como seguro"</li>
-                <li>Los cambios se aplican inmediatamente</li>
+                <li>Haz clic en "Marcar como seguro" para quitar la marca de SPAM</li>
+                <li>Haz clic en "Marcar como spam" para marcar un número como SPAM</li>
+                <li>La página se recargará automáticamente después del cambio</li>
             </ul>
         </div>
     </div>
-    
-    <script>
-        function toggleSpam(reportId, button) {
-            fetch('/admin/reports/' + reportId + '/toggle-spam', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Recargar la página para ver los cambios
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error de conexión: ' + error);
-            });
-        }
-    </script>
 </body>
 </html>
