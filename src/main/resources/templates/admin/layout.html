@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
+<head th:fragment="head">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${title} ?: 'Panel Admin - ID Llamadas Colombia'">Panel Admin</title>
@@ -54,14 +54,11 @@
                     <p class="text-white-50">Admin Panel</p>
                 </div>
                 <nav>
-                    <a href="/admin/dashboard">
+                    <a href="/admin/dashboard" th:classappend="${active == 'dashboard'} ? 'active' : ''">
                         <i class="fas fa-tachometer-alt"></i> Dashboard
                     </a>
-                    <a href="/admin/numbers">
+                    <a href="/admin/numbers" th:classappend="${active == 'numbers'} ? 'active' : ''">
                         <i class="fas fa-phone"></i> Números Registrados
-                    </a>
-                    <a href="/admin/reports">
-                        <i class="fas fa-exclamation-triangle"></i> Reportes de Spam
                     </a>
                     <a href="/admin/logout">
                         <i class="fas fa-sign-out-alt"></i> Salir
@@ -78,7 +75,7 @@
                             Panel de Administración
                         </h5>
                     </div>
-                    <div th:replace="${page} :: content">
+                    <div th:fragment="content">
                         <!-- Aquí va el contenido específico de cada página -->
                     </div>
                 </div>
