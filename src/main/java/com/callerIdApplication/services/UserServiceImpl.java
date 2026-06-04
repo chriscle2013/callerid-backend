@@ -188,18 +188,18 @@ public class UserServiceImpl implements UserService {
 					return result;
 				}
 				
-				// Crear nuevo registro (spammer = true)
+				// Crear nuevo registro (spammer = false por defecto - CORREGIDO)
 				Map<String, Object> map = new HashMap<>();
 				map.put("name", "Unknown");
 				map.put("number", Number);
-				map.put("spammer", true);
+				map.put("spammer", false);  // CAMBIADO: ya no marca como SPAM por defecto
 				result.add(map);
 				
 				// También guardar en la base de datos
 				Spam spam = new Spam();
 				spam.setName("Unknown");
 				spam.setNumber(Number);
-				spam.setSpammer(true);
+				spam.setSpammer(false);  // CAMBIADO: ya no marca como SPAM por defecto
 				spamDao.save(spam);
 				
 				return result;
