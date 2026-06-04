@@ -85,25 +85,26 @@ public class AdminController {
     }
     
     @PostMapping("/reports/{id}/toggle-spam")
-    public String toggleSpam(@PathVariable Long id, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return "redirect:/admin/login";
-        }
-        
-        try {
-            Optional<Report> reportOpt = reportDao.findById(id);
-            if (reportOpt.isPresent()) {
-                Report report = reportOpt.get();
-                boolean newStatus = !report.isSpammer();
-                report.setSpammer(newStatus);
-                reportDao.save(report);
-            }
-        } catch (Exception e) {
-            System.out.println("Error toggling spam: " + e.getMessage());
-        }
-        
-        return "redirect:/admin/reports";
+public String toggleSpam(@PathVariable Long id, HttpSession session) {
+    // Verificar sesión de admin
+    if (session.getAttribute("admin_logged") == null) {
+        return "redirect:/admin/login";
     }
+    
+    try {
+        java.util.Optional<Report> reportOpt = reportDao.findById(id);
+        if (reportOpt.isPresent()) {
+            Report report = reportOpt.get();
+            boolean newStatus = !report.isSpammer();
+            report.setSpammer(newStatus);
+            reportDao.save(report);
+        }
+    } catch (Exception e) {
+        System.out.println("Error toggling spam: " + e.getMessage());
+    }
+    
+    return "redirect:/admin/reports";
+}
     
     @GetMapping("/logout")
     public String logout(HttpSession session) {
