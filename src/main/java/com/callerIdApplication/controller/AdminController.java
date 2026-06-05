@@ -85,7 +85,27 @@ public class AdminController {
         model.addAttribute("page", "admin/reports");
         return "admin/layout";
     }
-    
+
+    @GetMapping("/fix-uuid/{phoneNumber}")
+    @ResponseBody
+    public String fixUuid(@PathVariable String phoneNumber) {
+    try {
+        User user = cDao.findByphoneNumber(phoneNumber);
+        if (user != null) {
+            if (user.getUuid() == null || user.getUuid().isEmpty()) {
+                String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
+                user.setUuid(newUuid);
+                cDao.save(user);
+                return "✅ UUID asignado: " + newUuid + " para " + phoneNumber;
+            } else {
+                return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
+            }
+        }
+        return "❌ Usuario no encontrado";
+    } catch (Exception e) {
+        return "❌ Error: " + e.getMessage();
+    }
+}
     @PostMapping("/reports/{id}/toggle-spam")
 public String toggleSpam(@PathVariable Long id, HttpSession session) {
     // Verificar sesión de admin
