@@ -1,6 +1,7 @@
 package com.callerIdApplication.services;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,7 @@ import com.callerIdApplication.repostitory.UserDao;
 import net.bytebuddy.utility.RandomString;
 
 @Service
-public class LoginServiceImpl implements LoginService{
+public class LoginServiceImpl implements LoginService {
 
     @Autowired
     private UserDao cDao;
@@ -26,36 +27,40 @@ public class LoginServiceImpl implements LoginService{
     @Override
     public String logIntoAccount(LoginDTO dto) throws LoginException {
         
-        // 1. Buscar al usuario por número de teléfono
         User existingCustomer = cDao.findByphoneNumber(dto.getPhoneNumber());
         
         if (existingCustomer == null) {
             throw new LoginException("Please Enter a valid mobile number");
         }
         
-        // 2. Validar la contraseña
         if (!existingCustomer.getPassword().equals(dto.getPassword())) {
             throw new LoginException("Please Enter a valid password");
         }
         
-        // 3. Generar un nuevo UUID
-        String key = RandomString.make(6);
+        // Usar el UUID que ya tiene el usuario (NO generar uno nuevo)
+        String uuid = existingCustomer.getUuid();
         
-        // 4. Buscar si ya existe una sesión para este usuario y eliminarla (para evitar duplicados)
+        if (uuid == null || uuid.isEmpty()) {
+            // Si por alguna razón no tiene UUID, generar uno
+            uuid = RandomString.make(8);
+            existingCustomer.setUuid(uuid);
+            cDao.save(existingCustomer);
+        }
+        
+        // Eliminar sesión anterior si existe
         CurrentUserSession existingSession = sDao.findByUserId(existingCustomer.getUserId());
         if (existingSession != null) {
             sDao.delete(existingSession);
         }
         
-        // 5. Crear y guardar la nueva sesión
+        // Crear nueva sesión
         CurrentUserSession currentUserSession = new CurrentUserSession();
         currentUserSession.setUserId(existingCustomer.getUserId());
         currentUserSession.setLocalDateTime(LocalDateTime.now());
-        currentUserSession.setUuid(key);
+        currentUserSession.setUuid(uuid);
         sDao.save(currentUserSession);
         
-        // 6. Devolver SOLO el UUID (String)
-        return key;
+        return uuid;
     }
 
     @Override
