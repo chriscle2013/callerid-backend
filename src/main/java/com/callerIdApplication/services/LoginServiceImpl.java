@@ -47,13 +47,11 @@ public class LoginServiceImpl implements LoginService {
             cDao.save(existingCustomer);
         }
         
-        // Eliminar sesión anterior si existe
         CurrentUserSession existingSession = sDao.findByUserId(existingCustomer.getUserId());
         if (existingSession != null) {
             sDao.delete(existingSession);
         }
         
-        // Crear nueva sesión
         CurrentUserSession currentUserSession = new CurrentUserSession();
         currentUserSession.setUserId(existingCustomer.getUserId());
         currentUserSession.setLocalDateTime(LocalDateTime.now());
