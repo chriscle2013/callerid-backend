@@ -18,12 +18,11 @@ public class User {
     private String email;
     
     @Column(unique = true)
-    private String uuid;  // ← NUEVO CAMPO
+    private String uuid;
     
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "user")
     private List<Contact> contacts = new ArrayList<>();
     
-    // Constructores
     public User() {}
     
     public User(String userName, String phoneNumber, String password, String email) {
@@ -33,7 +32,6 @@ public class User {
         this.email = email;
     }
     
-    // Getters y Setters
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
     
