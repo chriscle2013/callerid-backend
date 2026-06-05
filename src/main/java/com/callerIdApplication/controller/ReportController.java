@@ -32,17 +32,17 @@ public ResponseEntity<Map<String, Object>> reportNumber(@RequestBody Map<String,
         
         // ACTUALIZAR tabla Spam (importante para que la app lo detecte)
         List<Spam> spamList = spamDao.findBynumber(phoneNumber);
-        Spam spam;
-        if (spamList != null && !spamList.isEmpty()) {
-            spam = spamList.get(0);
-            spam.setSpammer(spammer != null ? spammer : true);
-        } else {
-            spam = new Spam();
-            spam.setNumber(phoneNumber);
-            spam.setName("SPAM");
-            spam.setSpammer(spammer != null ? spammer : true);
-        }
-        spamDao.save(spam);
+Spam spam;
+if (spamList != null && !spamList.isEmpty()) {
+    spam = spamList.get(0);
+    spam.setSpammer(true);
+} else {
+    spam = new Spam();
+    spam.setNumber(phoneNumber);
+    spam.setName("SPAM");
+    spam.setSpammer(true);
+}
+spamDao.save(spam);
         
         response.put("success", true);
         response.put("message", "Reporte enviado correctamente");
