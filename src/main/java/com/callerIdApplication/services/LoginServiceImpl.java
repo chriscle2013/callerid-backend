@@ -37,21 +37,23 @@ public class LoginServiceImpl implements LoginService {
             throw new LoginException("Please Enter a valid password");
         }
         
-        // Usar el UUID que ya tiene el usuario (NO generar uno nuevo)
+        // USAR EL UUID EXISTENTE DEL USUARIO - NO GENERAR UNO NUEVO
         String uuid = existingCustomer.getUuid();
         
+        // Si el usuario no tiene UUID (usuarios antiguos), generar uno
         if (uuid == null || uuid.isEmpty()) {
-            // Si por alguna razón no tiene UUID, generar uno
-            uuid = RandomString.make(8);
+            uuid = RandomString.make(6);
             existingCustomer.setUuid(uuid);
             cDao.save(existingCustomer);
         }
         
+        // Eliminar sesión anterior si existe
         CurrentUserSession existingSession = sDao.findByUserId(existingCustomer.getUserId());
         if (existingSession != null) {
             sDao.delete(existingSession);
         }
         
+        // Crear nueva sesión
         CurrentUserSession currentUserSession = new CurrentUserSession();
         currentUserSession.setUserId(existingCustomer.getUserId());
         currentUserSession.setLocalDateTime(LocalDateTime.now());
