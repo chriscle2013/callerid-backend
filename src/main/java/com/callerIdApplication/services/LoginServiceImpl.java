@@ -1,16 +1,16 @@
 package com.callerIdApplication.services;
 
-import java.time.LocalDateTime;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // 👈 Asegura la persistencia en la BD
-
 import com.callerIdApplication.entity.CurrentUserSession;
 import com.callerIdApplication.entity.LoginDTO;
 import com.callerIdApplication.entity.User;
 import com.callerIdApplication.exceptions.LoginException;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class LoginServiceImpl implements LoginService {
@@ -22,53 +22,53 @@ public class LoginServiceImpl implements LoginService {
     private SessionDao sDao;
 
     @Override
-    @Transactional // 👈 Aplica commits automáticos en PostgreSQL al finalizar el método
     public String logIntoAccount(LoginDTO dto) throws LoginException {
         User existingCustomer = cDao.findByphoneNumber(dto.getPhoneNumber());
 
         if (existingCustomer == null) {
-            throw new LoginException("Please Enter a valid mobile number");
+            throw new LoginException("Por favor ingresa un número móvil válido");
         }
-        
+
+        // Validación estricta de la contraseña
         if (!existingCustomer.getPassword().equals(dto.getPassword())) {
-            throw new LoginException("Please Enter a valid password");
+            throw new LoginException("Contraseña incorrecta");
         }
 
-        // Recuperamos el UUID actual del usuario en la base de datos
         String uuid = existingCustomer.getUuid();
-        
-        // Si el UUID está vacío, es null o tiene espacios en blanco, generamos uno ESTÁTICO
-        if (uuid == null || uuid.trim().isEmpty()) {
-            uuid = java.util.UUID.randomUUID().toString().substring(0, 8); // Longitud estándar de 8 caracteres
+
+        // LÓGICA ESTABLE: Si el usuario NO tiene UUID en la tabla principal, se le genera uno permanente de 6 caracteres
+        if (uuid == null || uuid.isEmpty()) {
+            uuid = UUID.randomUUID().toString().substring(0, 6);
             existingCustomer.setUuid(uuid);
-            cDao.saveAndFlush(existingCustomer); // 👈 Sincronización inmediata con PostgreSQL
+            cDao.save(existingCustomer); // Guardado definitivo e inmutable en app_user
         }
 
-        // Gestión rigurosa de la sesión actual
+        // Eliminar cualquier sesión activa previa en el sistema para evitar duplicados
         CurrentUserSession existingSession = sDao.findByUserId(existingCustomer.getUserId());
         if (existingSession != null) {
             sDao.delete(existingSession);
-            sDao.flush(); // Validamos que se borre la sesión vieja antes de crear la nueva
         }
 
+        // Crear y guardar la sesión activa vinculada al UUID FIJO del usuario
         CurrentUserSession currentUserSession = new CurrentUserSession();
         currentUserSession.setUserId(existingCustomer.getUserId());
+        currentUserSession.setUuid(uuid); // Reutiliza la misma llave estática
         currentUserSession.setLocalDateTime(LocalDateTime.now());
-        currentUserSession.setUuid(uuid); // Se asigna el UUID estático a la sesión activa
-        
+
         sDao.save(currentUserSession);
 
-        return uuid; // Retornamos el UUID que ahora quedará fijo
+        return uuid;
     }
 
     @Override
-    @Transactional
     public String logOutFromAccount(String key) throws LoginException {
-        CurrentUserSession validCustomerSession = sDao.findByUuid(key);
-        if (validCustomerSession == null) {
-            throw new LoginException("User Not Logged In with this number");
+        CurrentUserSession validStatusSession = sDao.findByUuid(key);
+
+        if (validStatusSession == null) {
+            throw new LoginException("Usuario no logueado con esta clave (Key)");
         }
-        sDao.delete(validCustomerSession);
-        return "Logged Out !";
+
+        sDao.delete(validStatusSession);
+        return "Sesión cerrada correctamente!";
     }
 }
