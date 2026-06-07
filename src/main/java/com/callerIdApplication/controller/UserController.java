@@ -54,8 +54,8 @@ public class UserController {
         
         boolean isSpammer = false;
         if (spamList != null && !spamList.isEmpty()) {
-            // Usamos la misma sintaxis que funciona perfectamente en NameController.java
-            isSpammer = spamList.get(0).isSpammer(); 
+            // Usamos el getter real de la entidad: getSpammer()
+            isSpammer = spamList.get(0).getSpammer(); 
         }
 
         // 3. Modificar o construir la respuesta enriquecida para Android
