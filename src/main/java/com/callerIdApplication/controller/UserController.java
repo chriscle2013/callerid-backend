@@ -49,18 +49,16 @@ public class UserController {
         // 1. Ejecutar la búsqueda regular del servicio
         List<?> contacts = cService.searchPersonByNumber(num, key);
         
-        // 2. Comprobar si el número está marcado como SPAM de forma segura
+        // 2. Comprobar si el número está marcado como SPAM
         List<Spam> spamList = spamDao.findBynumber(num);
         
-        // Validamos si la lista contiene elementos
         boolean isSpammer = false;
         if (spamList != null && !spamList.isEmpty()) {
-            // Evaluamos el objeto directamente. Si isSpammer() falla por tipo, se accede al método alternativo.
-            Spam spamObject = spamList.get(0);
-            isSpammer = spamObject.isSpammer(); // Si tu clase usa Lombok u otra estructura, esto se resolverá de forma nativa
+            // Usamos la misma sintaxis que funciona perfectamente en NameController.java
+            isSpammer = spamList.get(0).isSpammer(); 
         }
 
-        // 3. Modificar o construir la respuesta para la App Android
+        // 3. Modificar o construir la respuesta enriquecida para Android
         List<Map<String, Object>> enrichedResponse = new ArrayList<>();
 
         if (contacts != null && !contacts.isEmpty()) {
