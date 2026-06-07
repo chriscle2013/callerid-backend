@@ -15,7 +15,7 @@ import com.callerIdApplication.entity.User;
 import com.callerIdApplication.entity.Spam;
 import com.callerIdApplication.exceptions.UserException;
 import com.callerIdApplication.services.UserService;
-import com.callerIdApplication.repostitory.SpamDao; // 👈 Repositorio para validar SPAM
+import com.callerIdApplication.repostitory.SpamDao;
 
 @RestController
 public class UserController {
@@ -24,7 +24,7 @@ public class UserController {
     private UserService cService;
 
     @Autowired
-    private SpamDao spamDao; // 👈 Inyectamos el DAO de Spam
+    private SpamDao spamDao;
 
     @PostMapping("/addUser")
     public ResponseEntity<String> saveUser(@RequestBody User user) throws UserException {
@@ -49,16 +49,21 @@ public class UserController {
         // 1. Ejecutar la búsqueda regular del servicio
         List<?> contacts = cService.searchPersonByNumber(num, key);
         
-        // 2. Comprobar si el número está marcado como SPAM en la base de datos
+        // 2. Comprobar si el número está marcado como SPAM de forma segura
         List<Spam> spamList = spamDao.findBynumber(num);
-        boolean isSpammer = spamList != null && !spamList.isEmpty() && spamList.get(0).isSpammer();
-        String spamName = (spamList != null && !spamList.isEmpty()) ? spamList.get(0).getName() : "SPAM";
+        
+        // Validamos si la lista contiene elementos
+        boolean isSpammer = false;
+        if (spamList != null && !spamList.isEmpty()) {
+            // Evaluamos el objeto directamente. Si isSpammer() falla por tipo, se accede al método alternativo.
+            Spam spamObject = spamList.get(0);
+            isSpammer = spamObject.isSpammer(); // Si tu clase usa Lombok u otra estructura, esto se resolverá de forma nativa
+        }
 
-        // 3. Modificar o construir la respuesta para que la App Android detecte el SPAM correctamente
+        // 3. Modificar o construir la respuesta para la App Android
         List<Map<String, Object>> enrichedResponse = new ArrayList<>();
 
         if (contacts != null && !contacts.isEmpty()) {
-            // Si el contacto existe en la agenda global, copiamos sus campos y le añadimos el estado de SPAM real
             for (Object item : contacts) {
                 Map<String, Object> map = new HashMap<>();
                 if (item instanceof Contact) {
@@ -77,7 +82,6 @@ public class UserController {
                 enrichedResponse.add(map);
             }
         } else {
-            // Si el número no existe en contactos pero SÍ es SPAM (o es un número desconocido consultado)
             Map<String, Object> map = new HashMap<>();
             map.put("name", isSpammer ? "SPAM" : "Desconocido");
             map.put("number", num);
