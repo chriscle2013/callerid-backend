@@ -24,6 +24,7 @@
                                 <th>Número de Teléfono</th>
                                 <th>Email</th>
                                 <th>Estado</th>
+                                <th>Código UUID (Key)</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -39,13 +40,24 @@
                                     <span class="badge bg-success">Registrado</span>
                                 </td>
                                 <td>
+                                    <span th:if="${user.uuid != null && !user.uuid.isEmpty()}" 
+                                          style="background-color: #eef2ff; color: #4f46e5; font-family: monospace; font-size: 0.85rem; padding: 4px 8px; border-radius: 6px; border: 1px solid #e0e7ff; font-weight: bold; display: inline-block;"
+                                          th:text="${user.uuid}">
+                                        A1B2C3
+                                    </span>
+                                    <span th:if="${user.uuid == null || user.uuid.isEmpty()}" 
+                                          class="badge bg-danger text-white">
+                                        <i class="fas fa-exclamation-triangle"></i> SIN UUID
+                                    </span>
+                                </td>
+                                <td>
                                     <button class="btn btn-sm btn-warning" th:onclick="'alert(\'Funcionalidad en desarrollo. User ID: ' + ${user.userId} + '\')'">
                                         <i class="fas fa-flag"></i> Marcar Spam
                                     </button>
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(users)}">
-                                <td colspan="6" class="text-center text-muted">
+                                <td colspan="7" class="text-center text-muted">
                                     <i class="fas fa-inbox fa-2x d-block mb-2"></i>
                                     No hay usuarios registrados aún
                                 </td>
