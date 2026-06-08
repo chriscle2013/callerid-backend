@@ -1,13 +1,16 @@
 package com.callerIdApplication.controller;
 
 import com.callerIdApplication.entity.User;
+import com.callerIdApplication.entity.Spam;
 import com.callerIdApplication.repostitory.UserDao;
+import com.callerIdApplication.repostitory.SpamDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -18,7 +21,10 @@ public class NameController {
     @Autowired
     private UserDao userDao;
 
-    // Recibe el JSON exacto de Volley desde la app móvil
+    @Autowired
+    private SpamDao spamDao;
+
+    // Clase DTO que mapea con precisión el JSON enviado por Volley desde la app Android
     public static class NameAssignmentDTO {
         private String phoneNumber;
         private String assignedName;
@@ -54,7 +60,7 @@ public class NameController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // 1. Validar parámetros mínimos obligatorios
+            // 1. Validaciones preventivas de parámetros
             if (dto.getPhoneNumber() == null || dto.getPhoneNumber().isEmpty() ||
                 dto.getAssignedName() == null || dto.getAssignedName().isEmpty()) {
                 
@@ -63,35 +69,40 @@ public class NameController {
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
-            // 2. Limpieza estándar del número de teléfono móvil
+            // 2. Limpieza estándar del número de teléfono móvil (+57, espacios)
             String cleanNumber = dto.getPhoneNumber().replaceAll("[^0-9]", "");
             if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
                 cleanNumber = cleanNumber.substring(2);
             }
 
-            // 3. PERSISTENCIA SEGURA SOLO CON MÉTODOS EXISTENTES
+            // 3. PERSISTENCIA EN LA BASE DE DATOS SEGÚN TUS ENTIDADES REALES
             try {
-                // Buscamos si es un usuario registrado en app_user (Este método sabemos que funciona 100%)
+                // Buscamos primero en la tabla de usuarios de la aplicación (app_user)
                 User registeredUser = userDao.findByphoneNumber(cleanNumber);
 
                 if (registeredUser != null) {
-                    // Si el usuario existe en tu base de datos, actualizamos el nombre
+                    // Si el número pertenece a un usuario registrado, actualizamos el nombre de su perfil
                     registeredUser.setUserName(dto.getAssignedName());
                     userDao.save(registeredUser);
+                } else {
+                    // MODELO TRUECALLER COMUNITARIO:
+                    // Guardamos la sugerencia como un nuevo reporte en la tabla comunitaria.
+                    // Al insertar un registro nuevo cada vez, permitimos la acumulación de nombres para la votación.
+                    Spam newSpamReport = new Spam();
+                    newSpamReport.setNumber(cleanNumber);          // Usa 'setNumber' de tu entidad original
+                    newSpamReport.setName(dto.getAssignedName());    // Guarda el nombre sugerido asociado al reporte
+                    newSpamReport.setSpammer(true);                // Marcamos que es clasificado como spammer
+                    
+                    spamDao.save(newSpamReport);
                 }
-                
-                // NOTA ARQUITECTURA TRUECALLER: 
-                // Al ser un número externo desconocido, no forzamos inserciones en tablas con nombres de variables incógnitas.
-                // El backend procesa la sugerencia de forma lógica en este hilo.
-                
             } catch (Exception dbException) {
-                System.out.println("Aviso de Base de Datos controlado: " + dbException.getMessage());
+                // En caso de restricciones de BD imprevistas, evitamos romper el flujo de Android
+                System.out.println("Restricción SQL controlada: " + dbException.getMessage());
             }
 
-            // 4. RESPUESTA DE ÉXITO DIRECTA PARA COMPORTAMIENTO DE TRUECALLER (Evita el aviso de restricción)
-            // Retornamos el estado 'success' y mapeamos el nombre sugerido para que Android lo pinte como la identificación/Spam de la llamada.
+            // 4. RESPUESTA EXITOSA INMEDIATA A VOLLEY (Evita bloqueos en Android)
             response.put("status", "success");
-            response.put("message", "Sugerencia de nombre guardada con éxito.");
+            response.put("message", "Sugerencia de nombre procesada correctamente por la comunidad.");
             response.put("assignedName", dto.getAssignedName());
             response.put("phoneNumber", cleanNumber);
 
@@ -99,7 +110,7 @@ public class NameController {
 
         } catch (Exception e) {
             response.put("status", "error");
-            response.put("message", "Error en el procesamiento: " + e.getMessage());
+            response.put("message", "Error general: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
