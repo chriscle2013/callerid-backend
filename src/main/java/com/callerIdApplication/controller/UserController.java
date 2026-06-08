@@ -18,6 +18,7 @@ import com.callerIdApplication.services.UserService;
 import com.callerIdApplication.repostitory.SpamDao;
 
 @RestController
+@CrossOrigin(origins = "*")
 public class UserController {
 
     @Autowired
@@ -46,17 +47,42 @@ public class UserController {
 
     @GetMapping("/user/searchPerson/number={num}")
     public ResponseEntity<List<?>> searchPersonByPhoneNumber(@PathVariable("num") String num, @RequestParam(required = false) String key) throws UserException {
-        // 1. Ejecutar la búsqueda regular del servicio
+        
+        // 1. Ejecutar la búsqueda regular en el servicio de contactos existentes
         List<?> contacts = cService.searchPersonByNumber(num, key);
         
-        // 2. Comprobar si el número está marcado como SPAM
+        // 2. Consultar la lista histórica de reportes de Spam de la comunidad
         List<Spam> spamList = spamDao.findBynumber(num);
         
         boolean isSpammer = false;
+        String communityMostVotedName = null;
+
         if (spamList != null && !spamList.isEmpty()) {
-            // Usamos el getter real de la entidad: getSpammer()
+            // Evaluamos el estado global consultando el primer elemento
             isSpammer = spamList.get(0).getSpammer(); 
+
+            // ALGORITMO TRUECALLER: Contar frecuencias de los nombres sugeridos por la comunidad
+            Map<String, Integer> nameFrequencyMap = new HashMap<>();
+            for (Spam s : spamList) {
+                if (s.getName() != null && !s.getName().trim().isEmpty()) {
+                    String candidateName = s.getName().trim();
+                    nameFrequencyMap.put(candidateName, nameFrequencyMap.getOrDefault(candidateName, 0) + 1);
+                }
+            }
+
+            // Seleccionar el nombre que tiene la mayor cantidad de menciones de la comunidad
+            int maxVotes = 0;
+            for (Map.Entry<String, Integer> entry : nameFrequencyMap.entrySet()) {
+                if (entry.getValue() > maxVotes) {
+                    maxVotes = entry.getValue();
+                    communityMostVotedName = entry.getKey();
+                }
+            }
         }
+
+        // Definir el nombre definitivo en caso de ser clasificado como Spam
+        // Si la comunidad votó un nombre, se usa ese; si no, se usa el comodín "SPAM"
+        String finalSpamDisplayName = (communityMostVotedName != null) ? communityMostVotedName : "SPAM";
 
         // 3. Modificar o construir la respuesta enriquecida para Android
         List<Map<String, Object>> enrichedResponse = new ArrayList<>();
@@ -66,22 +92,23 @@ public class UserController {
                 Map<String, Object> map = new HashMap<>();
                 if (item instanceof Contact) {
                     Contact c = (Contact) item;
-                    map.put("name", isSpammer ? "SPAM" : c.getName());
+                    map.put("name", isSpammer ? finalSpamDisplayName : c.getName());
                     map.put("number", c.getNumber());
                 } else if (item instanceof User) {
                     User u = (User) item;
-                    map.put("name", isSpammer ? "SPAM" : u.getUserName());
+                    map.put("name", isSpammer ? finalSpamDisplayName : u.getUserName());
                     map.put("number", u.getPhoneNumber());
                 } else {
-                    map.put("name", isSpammer ? "SPAM" : "Desconocido");
+                    map.put("name", isSpammer ? finalSpamDisplayName : "Desconocido");
                     map.put("number", num);
                 }
                 map.put("spammer", isSpammer);
                 enrichedResponse.add(map);
             }
         } else {
+            // Si el número no está en la agenda de nadie pero es un número reportado/desconocido
             Map<String, Object> map = new HashMap<>();
-            map.put("name", isSpammer ? "SPAM" : "Desconocido");
+            map.put("name", isSpammer ? finalSpamDisplayName : "Desconocido");
             map.put("number", num);
             map.put("spammer", isSpammer);
             enrichedResponse.add(map);
