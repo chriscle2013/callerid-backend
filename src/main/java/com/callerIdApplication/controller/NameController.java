@@ -1,9 +1,7 @@
 package com.callerIdApplication.controller;
 
 import com.callerIdApplication.entity.User;
-import com.callerIdApplication.entity.CurrentUserSession;
 import com.callerIdApplication.repostitory.UserDao;
-import com.callerIdApplication.repostitory.SessionDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 @RestController
 @RequestMapping("/name")
@@ -20,10 +19,6 @@ public class NameController {
     @Autowired
     private UserDao userDao;
 
-    @Autowired
-    private SessionDao sessionDao;
-
-    // Clase contenedora (DTO) idéntica al formato JSON enviado por la app Android
     public static class NameAssignmentDTO {
         private String phoneNumber;
         private String assignedName;
@@ -59,50 +54,58 @@ public class NameController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // 1. Validar campos requeridos enviados por el cliente móvil
             if (dto.getPhoneNumber() == null || dto.getPhoneNumber().isEmpty() ||
                 dto.getAssignedName() == null || dto.getAssignedName().isEmpty()) {
                 
                 response.put("status", "error");
-                response.put("message", "Faltan parámetros: phoneNumber o assignedName");
+                response.put("message", "Faltan parámetros obligatorios.");
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
-            // 2. Homologar y limpiar el número telefónico recibido
             String cleanNumber = dto.getPhoneNumber().replaceAll("[^0-9]", "");
             if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
                 cleanNumber = cleanNumber.substring(2);
             }
 
-            // 3. Buscar si el registro ya existe en el sistema
+            // Buscar si el número de teléfono ya existe en la base de datos
             User targetUser = userDao.findByphoneNumber(cleanNumber);
 
             if (targetUser != null) {
-                // Si el número ya existe, actualizamos su nombre en la base de datos
+                // CASO 1: El usuario ya existe, solo le actualizamos el nombre de manera limpia
                 targetUser.setUserName(dto.getAssignedName());
                 userDao.save(targetUser);
             } else {
-                // Si el número es completamente nuevo, creamos un registro seguro en la base de datos
+                // CASO 2: Es un número nuevo desconocido.
+                // Para evitar errores de duplicado en la base de datos (SQL Constraint Error),
+                // generamos valores aleatorios numéricos cortos que cumplan con cualquier validación básica.
+                Random rand = new Random();
+                int randomId = 100000 + rand.nextInt(900000);
+                
                 User newUser = new User();
                 newUser.setPhoneNumber(cleanNumber);
                 newUser.setUserName(dto.getAssignedName());
-                newUser.setEmail(cleanNumber + "@callerid-comunidad.local"); // Correo dinámico autogenerado válido
-                newUser.setPassword("Pass_Community_" + cleanNumber); // Contraseña por defecto válida para evitar fallos de persistencia
-                newUser.setUuid(""); // Sin sesión inicializada
+                
+                // Estos correos y claves evitan disparar excepciones 'Unique' de PostgreSQL
+                newUser.setEmail("user_" + randomId + "@callerid.com");
+                newUser.setPassword("Pass" + randomId + "!");
+                newUser.setUuid(""); // Sin llave asignada de sesión
+                
                 userDao.save(newUser);
             }
 
-            // 4. Retornar respuesta exitosa estructurada en formato JSON
+            // Respuesta exitosa formateada para Volley (Android)
             response.put("status", "success");
-            response.put("message", "Nombre asignado exitosamente en el sistema comunitario.");
+            response.put("message", "Nombre guardado con éxito.");
             response.put("assignedName", dto.getAssignedName());
             response.put("phoneNumber", cleanNumber);
 
             return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (Exception e) {
+            // En caso de que ocurra cualquier otra restricción imprevista de la BD, no rompemos la app,
+            // capturamos el mensaje y le informamos al usuario de forma controlada.
             response.put("status", "error");
-            response.put("message", "Fallo crítico en el servidor: " + e.getMessage());
+            response.put("message", "Restricción de Base de Datos: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
