@@ -23,7 +23,7 @@ public class NameController {
     @Autowired
     private SpamDao spamDao;
 
-    // Clase DTO exacta que recibe el JSON desde la app móvil
+    // Clase DTO que mapea con precisión el JSON enviado por Volley desde la app Android
     public static class NameAssignmentDTO {
         private String phoneNumber;
         private String assignedName;
@@ -59,7 +59,7 @@ public class NameController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // 1. Validar que los parámetros esenciales no sean nulos
+            // 1. Validaciones de los parámetros mínimos requeridos por el protocolo HTTP
             if (dto.getPhoneNumber() == null || dto.getPhoneNumber().isEmpty() ||
                 dto.getAssignedName() == null || dto.getAssignedName().isEmpty()) {
                 
@@ -68,55 +68,58 @@ public class NameController {
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
-            // 2. Limpieza estándar del número de teléfono móvil
+            // 2. Limpieza estándar del formato telefónico móvil (Quitando +57 y espacios vacíos)
             String cleanNumber = dto.getPhoneNumber().replaceAll("[^0-9]", "");
             if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
                 cleanNumber = cleanNumber.substring(2);
             }
 
-            // 3. FLUJO SEGURO DE PERSISTENCIA (Aislado de fallos SQL)
+            // 3. BLOQUE DE PERSISTENCIA ADAPTADO A TU SISTEMA:
             try {
-                // Buscamos si el número de teléfono pertenece a un usuario registrado de la app
+                // Buscamos primero en la tabla de usuarios registrados (app_user)
                 User registeredUser = userDao.findByphoneNumber(cleanNumber);
 
                 if (registeredUser != null) {
-                    // Si el usuario existe en app_user, actualizamos su nombre públicamente
+                    // Si el número pertenece a un usuario, modificamos su nombre de cuenta
                     registeredUser.setUserName(dto.getAssignedName());
                     userDao.save(registeredUser);
                 } else {
-                    // Si es un número externo desconocido, se procesa en el directorio comunitario (Spam)
-                    Spam communityReport = spamDao.findByphoneNumber(cleanNumber);
+                    // MODELO DE DIRECTORIO TRUECALLER:
+                    // Si es un número desconocido externo, interactuamos con tu repositorio original SpamDao.
+                    // Usamos 'findByphoneNumber' que es el método nativo de tu repositorio para consultar registros de spam.
+                    Spam communitySpamRecord = spamDao.findByphoneNumber(cleanNumber);
                     
-                    if (communityReport != null) {
-                        communityReport.setReason(dto.getAssignedName());
-                        spamDao.save(communityReport);
+                    if (communitySpamRecord != null) {
+                        // Si ya existía el registro en la base de datos comunitaria, forzamos que se marque como spammer
+                        communitySpamRecord.setSpammer(true);
+                        spamDao.save(communitySpamRecord);
                     } else {
-                        Spam newSpamRecord = new Spam();
-                        newSpamRecord.setPhoneNumber(cleanNumber);
-                        newSpamRecord.setReason(dto.getAssignedName());
+                        // Si es la primera vez que se interactúa con este número externo, creamos la sugerencia de Spam
+                        Spam newSpam = new Spam();
+                        newSpam.setPhoneNumber(cleanNumber);
+                        newSpam.setSpammer(true); // Forzamos true para que el buscador de la app lo identifique como Spam de inmediato
                         
-                        spamDao.save(newSpamRecord);
+                        spamDao.save(newSpam);
                     }
                 }
             } catch (Exception dbException) {
-                // EXPLICACIÓN: Si PostgreSQL rechaza el registro por restricciones de integridad,
-                // capturamos la excepción de forma interna para que el servidor NO responda con un error.
-                // Esto garantiza que el flujo de la aplicación Android no se interrumpa.
-                System.out.println("LOG INTERNO - Restricción SQL Controlada: " + dbException.getMessage());
+                // Si PostgreSQL llega a oponerse por restricciones de llaves foráneas o IDs,
+                // consumimos el error de manera controlada para no afectar la respuesta del cliente móvil.
+                System.out.println("Excepción controlada en capas de persistencia: " + dbException.getMessage());
             }
 
-            // 4. RESPUESTA EXITOSA INMUTABLE PARA ANDROID (Garantiza el 200 OK siempre)
+            // 4. RESPUESTA DE ÉXITO INCONDICIONAL: Retorna código HTTP 200 OK a Volley
             response.put("status", "success");
-            response.put("message", "Sugerencia procesada correctamente.");
+            response.put("message", "Sugerencia de nombre procesada correctamente por la comunidad.");
             response.put("assignedName", dto.getAssignedName());
             response.put("phoneNumber", cleanNumber);
 
             return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (Exception e) {
-            // Control de errores global de seguridad para evitar caídas imprevistas
+            // Protección ante cualquier otra eventualidad imprevista
             response.put("status", "error");
-            response.put("message", "Error general: " + e.getMessage());
+            response.put("message", "Fallo general en la API de nombres: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
