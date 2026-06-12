@@ -1,7 +1,7 @@
-package com.calleridApplication.controller;
+package com.callerIdApplication.controller;
 
-import com.calleridApplication.entity.User;
-import com.calleridApplication.repostitory.UserDao;
+import com.callerIdApplication.entity.Contact;
+import com.callerIdApplication.repostitory.UserDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,13 +19,13 @@ public class UserController {
     private UserDao userDao;
 
     @PostMapping("/user/register")
-    public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
+    public ResponseEntity<Map<String, Object>> registerUser(@RequestBody Contact contact) {
         Map<String, Object> response = new HashMap<>();
         try {
-            User savedUser = userDao.save(user);
+            Contact savedContact = userDao.save(contact);
             response.put("status", "success");
             response.put("message", "Usuario registrado correctamente");
-            response.put("data", savedUser);
+            response.put("data", savedContact);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("status", "error");
@@ -52,12 +52,11 @@ public class UserController {
         String name = "Unknown";
         
         try {
-            // Se realiza la consulta mediante el objeto de acceso a datos UserDao
-            User foundUser = userDao.findByPhoneNumber(cleanNumber);
-            if (foundUser != null) {
-                name = foundUser.getName();
-                // Si tu entidad maneja internamente la bandera o se calcula por reportes
-                isSpammer = foundUser.isSpammer(); 
+            // Consulta en base de datos mediante el objeto de acceso a datos UserDao
+            Contact foundContact = userDao.findByPhoneNumber(cleanNumber);
+            if (foundContact != null) {
+                name = foundContact.getName();
+                isSpammer = foundContact.isSpammer(); 
             }
             
             // 🛠️ CONTROL EXCLUSIVO DE DEPURACIÓN DE PRUEBAS
@@ -77,7 +76,7 @@ public class UserController {
             return ResponseEntity.ok(responseList);
             
         } catch (Exception e) {
-            // En caso de falla en la consulta de la base de datos, se estructura un retorno seguro de emergencia
+            // Mitigación de emergencia en caso de fallas de conexión con la base de datos relacional
             if ("3166009819".equals(cleanNumber)) {
                 responseMap.put("number", cleanNumber);
                 responseMap.put("spammer", false);
@@ -87,7 +86,7 @@ public class UserController {
             }
             
             responseMap.put("number", cleanNumber);
-            responseMap.put("spammer", true); // Por seguridad ante caídas se mitiga como sospechoso
+            responseMap.put("spammer", true);
             responseMap.put("name", "Error del Servidor");
             responseList.add(responseMap);
             return ResponseEntity.status(500).body(responseList);
