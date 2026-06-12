@@ -1,9 +1,9 @@
 package com.callerIdApplication.controller;
 
 import com.callerIdApplication.entity.User;
-import com.callerIdApplication.entity.Spam;
+import com.callerIdApplication.entity.Report;
 import com.callerIdApplication.repostitory.UserDao;
-import com.callerIdApplication.repostitory.SpamDao;
+import com.callerIdApplication.repostitory.ReportDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +21,7 @@ public class UserController {
     private UserDao userDao;
 
     @Autowired
-    private SpamDao spamDao;
+    private ReportDao reportDao; // Repositorio real que contiene el método isSpammer() comprobado
 
     @PostMapping("/user/register")
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
@@ -49,7 +49,7 @@ public class UserController {
         
         String originalNumber = number;
         
-        // 1. Crear variante limpia del número telefónico para la búsqueda estandarizada
+        // 1. Limpiar el número para búsquedas estándar sin prefijos internacionales
         String cleanNumber = number.replaceAll("[^0-9]", "");
         if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
             cleanNumber = cleanNumber.substring(2);
@@ -59,7 +59,7 @@ public class UserController {
         String resolvedName = "Unknown";
         
         try {
-            // CRITERIO A: Buscar coincidencia en la tabla de Usuarios utilizando UserDao
+            // CRITERIO A: Intentar buscar en la tabla de usuarios registrados
             User foundUser = userDao.findByphoneNumber(cleanNumber);
             if (foundUser == null && !cleanNumber.equals(originalNumber)) {
                 foundUser = userDao.findByphoneNumber(originalNumber);
@@ -69,35 +69,34 @@ public class UserController {
                 resolvedName = "Usuario Registrado";
             }
 
-            // CRITERIO B: Comprobación nativa sobre la tabla de Spam (SpamDao)
-            List<Spam> spamList = spamDao.findBynumber(cleanNumber);
+            // CRITERIO B: Sincronización Real con la tabla de Reportes (ReportDao)
+            // Usamos el método nativo exacto de tu interfaz: findByPhoneNumber
+            List<Report> reportList = reportDao.findByPhoneNumber(cleanNumber);
             
-            if ((spamList == null || spamList.isEmpty()) && !cleanNumber.equals(originalNumber)) {
-                spamList = spamDao.findBynumber(originalNumber);
+            if ((reportList == null || reportList.isEmpty()) && !cleanNumber.equals(originalNumber)) {
+                reportList = reportDao.findByPhoneNumber(originalNumber);
             }
             
-            if (spamList != null && !spamList.isEmpty()) {
-                Spam spamRecord = spamList.get(0);
-                if (spamRecord != null) {
-                    // Llamado al método nativo correcto autogenerado para el wrapper Boolean en tu entidad Spam
-                    Boolean dbSpammerStatus = spamRecord.getSpammer();
-                    if (dbSpammerStatus != null) {
-                        isSpammer = dbSpammerStatus;
-                    }
+            // Si el número tiene un historial de reportes en el sistema
+            if (reportList != null && !reportList.isEmpty()) {
+                Report reportRecord = reportList.get(0);
+                if (reportRecord != null) {
+                    // Invocamos el método que ya validamos que compila en tu ReportController
+                    isSpammer = reportRecord.isSpammer(); 
                     
-                    // Asignamos el nombre registrado si se encuentra marcado como Spam activo
                     if (isSpammer) {
-                        resolvedName = (spamRecord.getName() != null) ? spamRecord.getName() : "SPAM";
+                        resolvedName = (reportRecord.getCategory() != null) ? "Reporte: " + reportRecord.getCategory() : "SPAM";
                     }
                 }
             }
             
-            // 🛠️ REGLA DE ORO DE CONTROL: Forzado estricto para tu número de pruebas específico
+            // 🛠️ REGLA DE ORO: Control total sobre tu número de pruebas específico
             if ("3166009819".equals(cleanNumber) || "3166009819".equals(originalNumber)) {
                 isSpammer = false;
                 resolvedName = "Número de Prueba Seguro";
             }
             
+            // Mapeo final estricto del JSON esperado por la App
             responseMap.put("number", cleanNumber);
             responseMap.put("spammer", isSpammer);
             responseMap.put("name", resolvedName);
