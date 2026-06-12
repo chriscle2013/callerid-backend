@@ -1,8 +1,9 @@
 package com.callerIdApplication.controller;
 
 import com.callerIdApplication.entity.User;
+import com.callerIdApplication.entity.Spam;
 import com.callerIdApplication.repostitory.UserDao;
-import com.callerIdApplication.repostitory.SpamDao; // Inyección de la persistencia de Spams comunitarios
+import com.callerIdApplication.repostitory.SpamDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +21,7 @@ public class UserController {
     private UserDao userDao;
 
     @Autowired
-    private SpamDao spamDao; // Conector directo a la tabla de reportes en Render
+    private SpamDao spamDao;
 
     @PostMapping("/user/register")
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
@@ -56,80 +57,63 @@ public class UserController {
         String resolvedName = "Unknown";
         
         try {
-            // CRITERIO A: Buscar coincidencia en la tabla de Usuarios para intentar resolver el Nombre
-            Iterable<User> allUsers = userDao.findAll();
-            if (allUsers != null) {
-                for (User u : allUsers) {
-                    if (u != null && u.getPhoneNumber() != null) {
-                        String targetNum = u.getPhoneNumber().replaceAll("[^0-9]", "");
-                        if (targetNum.length() == 12 && targetNum.startsWith("57")) {
-                            targetNum = targetNum.substring(2);
-                        }
-                        if (cleanNumber.equals(targetNum)) {
-                            try {
-                                java.lang.reflect.Method getNameMethod = u.getClass().getMethod("getName");
-                                Object nameObj = getNameMethod.invoke(u);
-                                if (nameObj != null) {
-                                    resolvedName = nameObj.toString();
-                                }
-                            } catch (Exception e) {
-                                resolvedName = "Unknown";
-                            }
-                            break;
-                        }
+            // CRITERIO A: Buscar en la tabla de Usuarios utilizando tu método exacto del UserDao
+            User foundUser = userDao.findByphoneNumber(cleanNumber);
+            if (foundUser != null) {
+                // Intentamos extraer el nombre si la entidad User cuenta con el atributo de manera estándar
+                try {
+                    java.lang.reflect.Method getNameMethod = foundUser.getClass().getMethod("getName");
+                    Object nameObj = getNameMethod.invoke(foundUser);
+                    if (nameObj != null) {
+                        resolvedName = nameObj.toString();
                     }
+                } catch (Exception e) {
+                    resolvedName = "Unknown";
                 }
             }
 
-            // CRITERIO B: Buscar de forma estricta en la tabla de Spams Comunitarios (SpamDao)
-            // Esto asegura que si el número fue reportado como fraude, se marque como spammer de forma dinámica
-            Iterable<?> allSpams = spamDao.findAll();
-            if (allSpams != null) {
-                for (Object s : allSpams) {
-                    if (s != null) {
-                        String spamNum = "";
-                        // Extraemos de forma segura la propiedad del número telefónico dentro de la entidad Spam
+            // CRITERIO B: Buscar en la tabla de Spams utilizando tu método exacto de SpamDao
+            List<Spam> spamList = spamDao.findBynumber(cleanNumber);
+            if (spamList != null && !spamList.isEmpty()) {
+                Spam spamRecord = spamList.get(0);
+                if (spamRecord != null) {
+                    // Validamos el estado real del campo 'spammer' almacenado en PostgreSQL
+                    try {
+                        java.lang.reflect.Method isSpammerMethod = spamRecord.getClass().getMethod("isSpammer");
+                        Object spammerObj = isSpammerMethod.invoke(spamRecord);
+                        if (spammerObj instanceof Boolean) {
+                            isSpammer = (Boolean) spammerObj;
+                        }
+                    } catch (Exception e) {
                         try {
-                            java.lang.reflect.Method getPhoneMethod = s.getClass().getMethod("getPhoneNumber");
-                            Object phoneObj = getPhoneMethod.invoke(s);
-                            if (phoneObj != null) {
-                                spamNum = phoneObj.toString().replaceAll("[^0-9]", "");
+                            java.lang.reflect.Method getSpammerMethod = spamRecord.getClass().getMethod("getSpammer");
+                            Object spammerObj = getSpammerMethod.invoke(spamRecord);
+                            if (spammerObj instanceof Boolean) {
+                                isSpammer = (Boolean) spammerObj;
+                            }
+                        } catch (Exception ex) {
+                            // Si no se logra determinar la lectura de la propiedad, asumimos el estado del registro físico
+                            isSpammer = true; 
+                        }
+                    }
+
+                    // Si el registro de la DB dictamina que sí es spammer, adjuntamos la etiqueta correspondiente
+                    if (isSpammer && "Unknown".equals(resolvedName)) {
+                        try {
+                            java.lang.reflect.Method getNameMethod = spamRecord.getClass().getMethod("getName");
+                            Object nameObj = getNameMethod.invoke(spamRecord);
+                            if (nameObj != null) {
+                                resolvedName = nameObj.toString();
                             }
                         } catch (Exception e) {
-                            try {
-                                java.lang.reflect.Method getNumMethod = s.getClass().getMethod("getNumber");
-                                Object numObj = getNumMethod.invoke(s);
-                                if (numObj != null) {
-                                    spamNum = numObj.toString().replaceAll("[^0-9]", "");
-                                }
-                            } catch (Exception ex) {}
-                        }
-
-                        if (spamNum.length() == 12 && spamNum.startsWith("57")) {
-                            spamNum = spamNum.substring(2);
-                        }
-
-                        // Si el número consultado posee un registro en la tabla de spams, activamos la alerta de peligro
-                        if (cleanNumber.equals(spamNum) && !spamNum.isEmpty()) {
-                            isSpammer = true;
-                            // Intentamos heredar la categoría del reporte (ej: Fraude) como el nombre provisional si está vacío
-                            if ("Unknown".equals(resolvedName)) {
-                                try {
-                                    java.lang.reflect.Method getCategoryMethod = s.getClass().getMethod("getCategory");
-                                    Object catObj = getCategoryMethod.invoke(s);
-                                    if (catObj != null) {
-                                        resolvedName = "Reporte: " + catObj.toString();
-                                    }
-                                } catch (Exception ex) {}
-                            }
-                            break;
+                            resolvedName = "SPAM";
                         }
                     }
                 }
             }
             
             // 🛠️ CONTROL EXCLUSIVO DE DEPURACIÓN DE PRUEBAS
-            // Forzamos estrictamente el estado seguro únicamente para tu número de pruebas específico
+            // Forzado estricto para tu número de pruebas específico
             if ("3166009819".equals(cleanNumber)) {
                 isSpammer = false;
                 resolvedName = "Número de Prueba Seguro";
@@ -143,7 +127,7 @@ public class UserController {
             return ResponseEntity.ok(responseList);
             
         } catch (Exception e) {
-            // Mitigación de emergencia en caso de fallas imprevistas con los DAOs en Render
+            // Mitigación de fallas de persistencia relacional en Render
             if ("3166009819".equals(cleanNumber)) {
                 responseMap.put("number", cleanNumber);
                 responseMap.put("spammer", false);
@@ -153,7 +137,7 @@ public class UserController {
             }
             
             responseMap.put("number", cleanNumber);
-            responseMap.put("spammer", true);
+            responseMap.put("spammer", false);
             responseMap.put("name", "Error de Sincronización");
             responseList.add(responseMap);
             return ResponseEntity.status(500).body(responseList);
