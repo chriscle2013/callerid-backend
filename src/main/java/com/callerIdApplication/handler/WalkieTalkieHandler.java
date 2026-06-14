@@ -14,7 +14,7 @@ import java.util.Set;
 @Component
 public class WalkieTalkieHandler extends BinaryWebSocketHandler {
 
-    // Lista thread-safe para almacenar las sesiones activas de los usuarios en el Walkie-Talkie
+    // Contenedor seguro para hilos que almacena las conexiones activas de los celulares
     private final Set<WebSocketSession> sessions = Collections.synchronizedSet(new HashSet<>());
 
     @Override
@@ -25,15 +25,12 @@ public class WalkieTalkieHandler extends BinaryWebSocketHandler {
 
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) throws Exception {
-        // Transmisión en tiempo real: Tomamos el paquete de audio binario entrante
-        byte[] audioBuffer = message.getPayload().array();
-
-        // Hacemos un multicast a todos los usuarios conectados en la comunidad, excepto al que está hablando
+        // Recorremos las sesiones y retransmitimos el paquete de audio a todos los demás
         synchronized (sessions) {
             for (WebSocketSession activeSession : sessions) {
                 if (activeSession.isOpen() && !activeSession.getId().equals(session.getId())) {
                     try {
-                        activeSession.sendMessage(new BinaryMessage(audioBuffer));
+                        activeSession.sendMessage(new BinaryMessage(message.getPayload()));
                     } catch (IOException e) {
                         System.err.println("Error retransmitiendo audio a la sesión " + activeSession.getId() + ": " + e.getMessage());
                     }
@@ -45,6 +42,6 @@ public class WalkieTalkieHandler extends BinaryWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         sessions.remove(session);
-        System.out.println("❌ [Walkie-Talkie] Conexión cerrada para la sesión: " + session.getId() + " - Razón: " + status.getReason());
+        System.out.println("❌ [Walkie-Talkie] Conexión cerrada para la sesión: " + session.getId());
     }
 }
