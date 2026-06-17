@@ -52,15 +52,14 @@ public class UserController {
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 3. Generación y homologación estricta de un UUID ultra corto (8 caracteres) libre de guiones
-            // Evita fallas en columnas parametrizadas como VARCHAR(8) o longitudes cortas en BD
+            // 3. Generación de un UUID de 8 caracteres homologado con el Admin
             String shortUuid = UUID.randomUUID().toString().replaceAll("-", "");
             if (shortUuid.length() > 8) {
                 shortUuid = shortUuid.substring(0, 8);
             }
             user.setUuid(shortUuid);
 
-            // 4. Asegurar que los campos String no viajen como nulos si la BD tiene restricciones NOT NULL
+            // 4. Valores por defecto preventivos en caso de restricciones NOT NULL en BD
             if (user.getUserName() == null || user.getUserName().trim().isEmpty()) {
                 user.setUserName("Usuario " + user.getPhoneNumber());
             }
@@ -77,11 +76,18 @@ public class UserController {
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            // Imprime la traza completa en los logs de Render para auditoría inmediata
             e.printStackTrace();
             
+            // Extraer el mensaje raíz del error de base de datos para mostrarlo en el Toast
+            String detailedError = e.getMessage();
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                detailedError = cause.getMessage();
+                cause = cause.getCause();
+            }
+            
             response.put("status", "error");
-            response.put("message", "Error interno en el servidor (DB): " + e.getMessage());
+            response.put("message", "Error en BD: " + detailedError);
             return ResponseEntity.status(500).body(response);
         }
     }
