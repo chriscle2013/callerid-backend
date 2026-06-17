@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID; // Aseguramos la importación para el identificador único
+import java.util.UUID;
 
 @RestController
 @CrossOrigin(origins = "*")
@@ -22,13 +22,16 @@ public class UserController {
     private UserDao userDao;
 
     @Autowired
-    private ReportDao reportDao; // Repositorio real que contiene el método isSpammer() comprobado
+    private ReportDao reportDao;
 
     @PostMapping("/user/register")
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 🚀 SOLUCIÓN AUTOMÁTICA: Si la app no envía un UUID (o llega vacío), el backend lo genera
+            // Garantizar que el ID comience nulo para que la DB asigne el autoincremental real
+            user.setUserId(null);
+
+            // Si la app no envía un UUID (o llega vacío), el backend lo genera
             if (user.getUuid() == null || user.getUuid().trim().isEmpty()) {
                 user.setUuid(UUID.randomUUID().toString());
             }
@@ -54,8 +57,6 @@ public class UserController {
         Map<String, Object> responseMap = new HashMap<>();
         
         String originalNumber = number;
-        
-        // 1. Limpiar el número para búsquedas estándar sin prefijos internacionales
         String cleanNumber = number.replaceAll("[^0-9]", "");
         if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
             cleanNumber = cleanNumber.substring(2);
@@ -65,7 +66,6 @@ public class UserController {
         String resolvedName = "Unknown";
         
         try {
-            // CRITERIO A: Intentar buscar en la tabla de usuarios registrados
             User foundUser = userDao.findByphoneNumber(cleanNumber);
             if (foundUser == null && !cleanNumber.equals(originalNumber)) {
                 foundUser = userDao.findByphoneNumber(originalNumber);
@@ -75,32 +75,26 @@ public class UserController {
                 resolvedName = "Usuario Registrado";
             }
 
-            // CRITERIO B: Sincronización Real con la tabla de Reportes (ReportDao)
             List<Report> reportList = reportDao.findByPhoneNumber(cleanNumber);
-            
             if ((reportList == null || reportList.isEmpty()) && !cleanNumber.equals(originalNumber)) {
                 reportList = reportDao.findByPhoneNumber(originalNumber);
             }
             
-            // Si el número tiene un historial de reportes en el sistema
             if (reportList != null && !reportList.isEmpty()) {
                 Report reportRecord = reportList.get(0);
                 if (reportRecord != null) {
                     isSpammer = reportRecord.isSpammer(); 
-                    
                     if (isSpammer) {
                         resolvedName = (reportRecord.getCategory() != null) ? "Reporte: " + reportRecord.getCategory() : "SPAM";
                     }
                 }
             }
             
-            // 🛠️ REGLA DE ORO: Control total sobre tu número de pruebas específico
             if ("3166009819".equals(cleanNumber) || "3166009819".equals(originalNumber)) {
                 isSpammer = false;
                 resolvedName = "Número de Prueba Seguro";
             }
             
-            // Mapeo final estricto del JSON esperado por la App
             responseMap.put("number", cleanNumber);
             responseMap.put("spammer", isSpammer);
             responseMap.put("name", resolvedName);
