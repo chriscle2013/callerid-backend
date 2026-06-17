@@ -48,6 +48,51 @@ public class UserController {
         }
     }
 
+    @PostMapping("/user/login")
+    public ResponseEntity<Map<String, Object>> loginUser(@RequestBody Map<String, String> credentials) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String phoneNumber = credentials.get("phoneNumber");
+            String password = credentials.get("password");
+
+            if (phoneNumber == null || password == null) {
+                response.put("status", "error");
+                response.put("message", "Faltan parámetros requeridos (phoneNumber o password)");
+                return ResponseEntity.status(400).body(response);
+            }
+
+            // Normalización del número telefónico para la búsqueda en BD
+            String cleanNumber = phoneNumber.replaceAll("[^0-9]", "");
+            if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
+                cleanNumber = cleanNumber.substring(2);
+            }
+
+            // Intentar buscar por número limpio
+            User user = userDao.findByphoneNumber(cleanNumber);
+            if (user == null && !cleanNumber.equals(phoneNumber)) {
+                // Intento secundario con el número original si falló el formateo
+                user = userDao.findByphoneNumber(phoneNumber);
+            }
+
+            // Validación de credenciales
+            if (user != null && user.getPassword().equals(password)) {
+                response.put("status", "success");
+                response.put("message", "Autenticación exitosa");
+                response.put("uuid", user.getUuid()); // Requerido de forma estricta por MainActivity.java
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("status", "error");
+                response.put("message", "Número de teléfono o contraseña incorrectos");
+                return ResponseEntity.status(401).body(response);
+            }
+
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "Error interno en el proceso de login: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
     @GetMapping("/user/searchPerson/number={number}")
     public ResponseEntity<List<Map<String, Object>>> searchPerson(
             @PathVariable("number") String number,
