@@ -1,8 +1,6 @@
 package com.callerIdApplication.entity;
 
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "app_user")
@@ -11,7 +9,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private Integer userId; // Restaurado a Integer para corregir LoginServiceImpl definitivamente
+    private Integer userId;
 
     @Column(name = "phone_number", unique = true, nullable = false)
     private String phoneNumber;
@@ -19,22 +17,20 @@ public class User {
     @Column(name = "password", nullable = false)
     private String password;
 
-    @Column(name = "uuid", length = 50)
+    // @Transient evita que Hibernate intente buscar o insertar esta columna en PostgreSQL
+    @Transient
     private String uuid;
 
-    @Column(name = "user_name")
+    @Transient
     private String userName;
 
-    @Column(name = "email")
+    @Transient
     private String email;
 
-    @Column(name = "is_active")
+    @Transient
     private boolean isActive = true;
 
-    // Relación requerida por UserServiceImpl.java
-    @Transient
-    private List<Contact> contacts = new ArrayList<>();
-
+    // Constructor obligatorio para JPA
     public User() {
     }
 
@@ -44,17 +40,6 @@ public class User {
 
     public void setUserId(Integer userId) {
         this.userId = userId;
-    }
-
-    public List<Contact> getContacts() {
-        if (this.contacts == null) {
-            this.contacts = new ArrayList<>();
-        }
-        return this.contacts;
-    }
-
-    public void setContacts(List<Contact> contacts) {
-        this.contacts = contacts;
     }
 
     public String getPhoneNumber() {
@@ -74,6 +59,10 @@ public class User {
     }
 
     public String getUuid() {
+        // Garantiza que la app móvil reciba un identificador único aunque no esté en la BD física
+        if (this.uuid == null || this.uuid.isEmpty()) {
+            return "USR" + (this.phoneNumber != null ? this.phoneNumber : "0000");
+        }
         return uuid;
     }
 
