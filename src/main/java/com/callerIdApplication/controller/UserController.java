@@ -35,10 +35,10 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Normalización estricta del número de teléfono
+            // 1. Normalización y validación estricta del número de teléfono
             if (user.getPhoneNumber() == null || user.getPhoneNumber().trim().isEmpty()) {
                 response.put("status", "error");
-                response.put("message", "El campo phoneNumber es obligatorio");
+                response.put("message", "El campo phoneNumber es requerido.");
                 return ResponseEntity.status(400).body(response);
             }
 
@@ -48,57 +48,88 @@ public class UserController {
             }
             user.setPhoneNumber(cleanRegNumber);
 
-            // 2. Validación preventiva: Evitar registrar un número que ya existe
+            // 2. Comprobación preventiva de duplicados
             User existingUser = userDao.findByphoneNumber(cleanRegNumber);
             if (existingUser != null) {
                 response.put("status", "error");
-                response.put("message", "El número de teléfono ya se encuentra registrado");
+                response.put("message", "Este número de teléfono ya se encuentra registrado.");
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 3. Generación de un UUID de 8 caracteres seguro
+            // 3. Generación del UUID corto homologado
             String shortUuid = UUID.randomUUID().toString().replaceAll("-", "");
             if (shortUuid.length() > 8) {
                 shortUuid = shortUuid.substring(0, 8);
             }
             user.setUuid(shortUuid);
 
-            // 4. Valores por defecto preventivos
-            String name = (user.getUserName() == null || user.getUserName().trim().isEmpty()) ? "Usuario " + cleanRegNumber : user.getUserName();
-            String email = (user.getEmail() == null || user.getEmail().trim().isEmpty()) ? cleanRegNumber + "@callerid.local" : user.getEmail();
+            // 4. Parámetros limpios para la consulta
             String password = user.getPassword();
-
             if (password == null || password.trim().isEmpty()) {
                 response.put("status", "error");
-                response.put("message", "La contraseña es obligatoria");
+                response.put("message", "La contraseña es un campo obligatorio.");
                 return ResponseEntity.status(400).body(response);
             }
-
-            // 5. INSERCIÓN MEDIANTE SQL NATIVO BINDADO (Salva problemas de secuencias o discrepancias de nombres)
-            String sql = "INSERT INTO app_user (phone_number, password, uuid, user_name, email, is_active) " +
-                         "VALUES (:phone, :pass, :uuid, :name, :email, true)";
             
-            entityManager.createNativeQuery(sql)
-                    .setParameter("phone", cleanRegNumber)
-                    .setParameter("pass", password)
-                    .setParameter("uuid", shortUuid)
-                    .setParameter("name", name)
-                    .setParameter("email", email)
-                    .executeUpdate();
+            String name = (user.getUserName() == null || user.getUserName().trim().isEmpty()) ? "Usuario " + cleanRegNumber : user.getUserName();
+            String email = (user.getEmail() == null || user.getEmail().trim().isEmpty()) ? cleanRegNumber + "@callerid.local" : user.getEmail();
 
-            // Buscar el objeto recién creado para retornar el flujo idéntico a JPA
+            // 5. INSERCIÓN TOTALMENTE PROTEGIDA CON DIAGNÓSTICO EN CASO DE EXCEPCIÓN SQL
+            try {
+                String sql = "INSERT INTO app_user (phone_number, password, uuid, user_name, email, is_active) " +
+                             "VALUES (:phone, :pass, :uuid, :name, :email, true)";
+                
+                entityManager.createNativeQuery(sql)
+                        .setParameter("phone", cleanRegNumber)
+                        .setParameter("pass", password)
+                        .setParameter("uuid", shortUuid)
+                        .setParameter("name", name)
+                        .setParameter("email", email)
+                        .executeUpdate();
+
+            } catch (Exception sqlEx) {
+                // Si falla por nombres de columna incorrectos en PostgreSQL, probamos la variante alternativa (camelCase)
+                try {
+                    String sqlFallback = "INSERT INTO app_user (phoneNumber, password, uuid, userName, email, isActive) " +
+                                         "VALUES (:phone, :pass, :uuid, :name, :email, true)";
+                    
+                    entityManager.createNativeQuery(sqlFallback)
+                            .setParameter("phone", cleanRegNumber)
+                            .setParameter("pass", password)
+                            .setParameter("uuid", shortUuid)
+                            .setParameter("name", name)
+                            .setParameter("email", email)
+                            .executeUpdate();
+                } catch (Exception fallbackEx) {
+                    // Si ambas variantes fallan, lanzamos la excepción original detallando la causa exacta de PostgreSQL
+                    throw new RuntimeException("Error de mapeo en PostgreSQL. Causa raíz: " + sqlEx.getMessage() + " | Caída: " + fallbackEx.getMessage());
+                }
+            }
+
+            // 6. Recuperar y retornar la entidad recién guardada de forma exitosa
             User savedUser = userDao.findByphoneNumber(cleanRegNumber);
 
             response.put("status", "success");
-            response.put("message", "Usuario registrado correctamente mediante motor nativo");
+            response.put("message", "Usuario registrado correctamente.");
             response.put("data", savedUser);
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             e.printStackTrace();
+            
+            // Desenredar la traza del error para capturar el mensaje real de PostgreSQL
+            String rootCauseMessage = e.getMessage();
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                rootCauseMessage = cause.getMessage();
+                cause = cause.getCause();
+            }
+
+            // Devolvemos el error detallado con estado 400 temporalmente para forzar a Volley
+            // a procesar el JSON y mostrar el texto descriptivo directo en el celular.
             response.put("status", "error");
-            response.put("message", "Excepción crítica en base de datos: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
+            response.put("message", "Falla en BD: " + rootCauseMessage);
+            return ResponseEntity.status(400).body(response);
         }
     }
 
