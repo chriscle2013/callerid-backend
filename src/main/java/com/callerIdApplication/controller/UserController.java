@@ -27,7 +27,6 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Validación preventiva del número de teléfono
             if (user.getPhoneNumber() == null || user.getPhoneNumber().trim().isEmpty()) {
                 response.put("status", "error");
                 response.put("message", "El campo phoneNumber es requerido.");
@@ -46,21 +45,19 @@ public class UserController {
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 2. Comprobación de duplicados
-            User existingUser = userDao.findByphoneNumber(cleanRegNumber);
+            // Uso del método normalizado
+            User existingUser = userDao.findByPhoneNumber(cleanRegNumber);
             if (existingUser != null) {
                 response.put("status", "error");
                 response.put("message", "Este número de teléfono ya se encuentra registrado.");
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 3. Guardado directo y limpio (Solo persistirá userId, phoneNumber y password)
             User savedUser;
             try {
-                user.setUserId(null); // Deja que la secuencia de la BD asigne el ID automático
+                user.setUserId(null);
                 savedUser = userDao.save(user);
             } catch (Exception ex) {
-                // Contingencia en caso de desincronización física de secuencias en PostgreSQL
                 long totalUsers = userDao.count();
                 int manualId = (int) (totalUsers + 1L + (System.currentTimeMillis() % 500L));
                 user.setUserId(manualId);
@@ -75,14 +72,12 @@ public class UserController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            
             String rootCauseMessage = e.getMessage();
             Throwable cause = e.getCause();
             while (cause != null) {
                 rootCauseMessage = cause.getMessage();
                 cause = cause.getCause();
             }
-
             response.put("status", "error");
             response.put("message", "Falla en persistencia: " + rootCauseMessage);
             return ResponseEntity.status(400).body(response);
@@ -107,9 +102,9 @@ public class UserController {
                 cleanNumber = cleanNumber.substring(2);
             }
 
-            User user = userDao.findByphoneNumber(cleanNumber);
+            User user = userDao.findByPhoneNumber(cleanNumber);
             if (user == null && !cleanNumber.equals(phoneNumber)) {
-                user = userDao.findByphoneNumber(phoneNumber);
+                user = userDao.findByPhoneNumber(phoneNumber);
             }
 
             if (user != null && user.getPassword().equals(password)) {
@@ -148,9 +143,9 @@ public class UserController {
         String resolvedName = "Unknown";
         
         try {
-            User foundUser = userDao.findByphoneNumber(cleanNumber);
+            User foundUser = userDao.findByPhoneNumber(cleanNumber);
             if (foundUser == null && !cleanNumber.equals(originalNumber)) {
-                foundUser = userDao.findByphoneNumber(originalNumber);
+                foundUser = userDao.findByPhoneNumber(originalNumber);
             }
             
             if (foundUser != null) {
