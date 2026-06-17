@@ -1,14 +1,17 @@
 package com.callerIdApplication.repostitory;
 
+import com.callerIdApplication.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.callerIdApplication.entity.User;
-
 @Repository
 public interface UserDao extends JpaRepository<User, Integer> {
-
-    public User findByphoneNumber(String phoneNumber);
     
-    public User findByuserName(String userName);
+    // Método estandarizado para mapear perfectamente con la variable 'phoneNumber' de la entidad
+    User findByPhoneNumber(String phoneNumber);
+    
+    // Método alternativo de compatibilidad temporal por si alguna otra clase del proyecto lo invoca
+    default User findByphoneNumber(String phoneNumber) {
+        return findByPhoneNumber(phoneNumber);
+    }
 }
