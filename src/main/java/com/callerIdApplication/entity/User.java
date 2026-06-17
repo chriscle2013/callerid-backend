@@ -1,6 +1,8 @@
 package com.callerIdApplication.entity;
 
 import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "app_user")
@@ -29,6 +31,10 @@ public class User {
 
     @Transient
     private boolean isActive = true;
+
+    // ATRIBUTO REQUERIDO POR USERSERVICEIMPL (Marcado como @Transient para compatibilidad)
+    @Transient
+    private List<String> contacts = new ArrayList<>();
 
     // Constructor obligatorio para JPA
     public User() {
@@ -92,5 +98,17 @@ public class User {
 
     public void setActive(boolean active) {
         this.isActive = active;
+    }
+
+    // GETTER Y SETTER OBLIGATORIOS PARA SOLUCIONAR EL ERROR EN USERSERVICEIMPL
+    public List<String> getContacts() {
+        if (this.contacts == null) {
+            this.contacts = new ArrayList<>();
+        }
+        return contacts;
+    }
+
+    public void setContacts(List<String> contacts) {
+        this.contacts = contacts;
     }
 }
