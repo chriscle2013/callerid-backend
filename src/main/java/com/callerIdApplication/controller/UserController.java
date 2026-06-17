@@ -28,12 +28,30 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // Sincronización limpia: Forzar ID nulo para evitar que herede conflictos de caché o ID duplicados
+            // 1. Forzar ID nulo para delegar el autoincremental de forma limpia a PostgreSQL
             user.setUserId(null);
 
-            // Si la app no envía un UUID (o llega vacío), el backend lo genera automáticamente
+            // 2. Normalización estricta del número de teléfono antes de guardar para evitar duplicados invisibles
+            if (user.getPhoneNumber() != null) {
+                String cleanRegNumber = user.getPhoneNumber().replaceAll("[^0-9]", "");
+                if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
+                    cleanRegNumber = cleanRegNumber.substring(2);
+                }
+                user.setPhoneNumber(cleanRegNumber);
+                
+                // Validación preventiva: Evitar registrar un número que ya existe en el sistema
+                User existingUser = userDao.findByphoneNumber(cleanRegNumber);
+                if (existingUser != null) {
+                    response.put("status", "error");
+                    response.put("message", "El número de teléfono ya se encuentra registrado");
+                    return ResponseEntity.status(400).body(response);
+                }
+            }
+
+            // 3. HOMOLOGACIÓN CON ADMIN: Generar un UUID seguro de 8 caracteres para evitar violaciones de tamaño
             if (user.getUuid() == null || user.getUuid().trim().isEmpty()) {
-                user.setUuid(UUID.randomUUID().toString());
+                String shortUuid = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 8);
+                user.setUuid(shortUuid);
             }
 
             User savedUser = userDao.save(user);
@@ -41,6 +59,7 @@ public class UserController {
             response.put("message", "Usuario registrado correctamente");
             response.put("data", savedUser);
             return ResponseEntity.ok(response);
+            
         } catch (Exception e) {
             response.put("status", "error");
             response.put("message", "Error al registrar usuario: " + e.getMessage());
@@ -61,24 +80,20 @@ public class UserController {
                 return ResponseEntity.status(400).body(response);
             }
 
-            // Normalización del número telefónico para la búsqueda en BD
             String cleanNumber = phoneNumber.replaceAll("[^0-9]", "");
             if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
                 cleanNumber = cleanNumber.substring(2);
             }
 
-            // Intentar buscar por número limpio
             User user = userDao.findByphoneNumber(cleanNumber);
             if (user == null && !cleanNumber.equals(phoneNumber)) {
-                // Intento secundario con el número original si falló el formateo
                 user = userDao.findByphoneNumber(phoneNumber);
             }
 
-            // Validación de credenciales
             if (user != null && user.getPassword().equals(password)) {
                 response.put("status", "success");
                 response.put("message", "Autenticación exitosa");
-                response.put("uuid", user.getUuid()); // Requerido de forma estricta por MainActivity.java
+                response.put("uuid", user.getUuid()); 
                 return ResponseEntity.ok(response);
             } else {
                 response.put("status", "error");
