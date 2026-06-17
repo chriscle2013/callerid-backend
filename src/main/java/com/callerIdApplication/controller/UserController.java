@@ -27,37 +27,46 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
+            // 1. Validación de campos requeridos
             if (user.getPhoneNumber() == null || user.getPhoneNumber().trim().isEmpty()) {
                 response.put("status", "error");
-                response.put("message", "El campo phoneNumber es requerido.");
+                response.put("message", "El campo phoneNumber llega vacio o nulo al backend.");
                 return ResponseEntity.status(400).body(response);
             }
 
+            if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "La contraseña llega vacia o nula al backend.");
+                return ResponseEntity.status(400).body(response);
+            }
+
+            // 2. Normalización del número
             String cleanRegNumber = user.getPhoneNumber().replaceAll("[^0-9]", "");
             if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
                 cleanRegNumber = cleanRegNumber.substring(2);
             }
             user.setPhoneNumber(cleanRegNumber);
 
-            if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
-                response.put("status", "error");
-                response.put("message", "La contraseña es obligatoria.");
-                return ResponseEntity.status(400).body(response);
-            }
-
-            // Uso del método normalizado
+            // 3. LOGICA FLEXIBLE PARA PRUEBAS: Si ya existe, actualiza en lugar de lanzar Error 400
             User existingUser = userDao.findByPhoneNumber(cleanRegNumber);
             if (existingUser != null) {
-                response.put("status", "error");
-                response.put("message", "Este número de teléfono ya se encuentra registrado.");
-                return ResponseEntity.status(400).body(response);
+                existingUser.setPassword(user.getPassword()); // Actualiza la contraseña
+                User updatedUser = userDao.save(existingUser);
+                
+                response.put("status", "success");
+                response.put("message", "El usuario ya existia. Contraseña actualizada correctamente.");
+                response.put("uuid", updatedUser.getUuid()); 
+                response.put("data", updatedUser);
+                return ResponseEntity.ok(response);
             }
 
+            // 4. Si es nuevo, realiza la inserción limpia
             User savedUser;
             try {
-                user.setUserId(null);
+                user.setUserId(null); // Permite el autoincremento serial de PostgreSQL
                 savedUser = userDao.save(user);
             } catch (Exception ex) {
+                // Mecanismo de contingencia por si fallan las secuencias internas de Render
                 long totalUsers = userDao.count();
                 int manualId = (int) (totalUsers + 1L + (System.currentTimeMillis() % 500L));
                 user.setUserId(manualId);
@@ -65,7 +74,7 @@ public class UserController {
             }
 
             response.put("status", "success");
-            response.put("message", "Usuario registrado correctamente.");
+            response.put("message", "Usuario nuevo registrado correctamente.");
             response.put("uuid", savedUser.getUuid()); 
             response.put("data", savedUser);
             return ResponseEntity.ok(response);
@@ -79,7 +88,7 @@ public class UserController {
                 cause = cause.getCause();
             }
             response.put("status", "error");
-            response.put("message", "Falla en persistencia: " + rootCauseMessage);
+            response.put("message", "Falla critica en persistencia: " + rootCauseMessage);
             return ResponseEntity.status(400).body(response);
         }
     }
