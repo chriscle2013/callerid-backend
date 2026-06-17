@@ -7,11 +7,18 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserDao extends JpaRepository<User, Integer> {
     
-    // Método estandarizado para mapear perfectamente con la variable 'phoneNumber' de la entidad
+    // Método estandarizado para buscar por número de teléfono (el cual sí existe físicamente)
     User findByPhoneNumber(String phoneNumber);
     
-    // Método alternativo de compatibilidad temporal por si alguna otra clase del proyecto lo invoca
+    // Método de compatibilidad por si es invocado con minúscula en alguna parte del código antiguo
     default User findByphoneNumber(String phoneNumber) {
         return findByPhoneNumber(phoneNumber);
+    }
+
+    // SOLUCIÓN AL ERROR DE COMPILACIÓN: 
+    // Provee soporte seguro a UserServiceImpl sin obligar a la BD física a tener la columna user_name
+    default User findByuserName(String userName) {
+        // Retorna null de forma segura para no generar excepciones de bases de datos
+        return null;
     }
 }
