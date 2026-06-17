@@ -71,11 +71,8 @@ public class UserController {
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 5. SOLUCIÓN AL ERROR 500 ORIGINAL (Control Manual de IDs de JPA)
-            // Si la base de datos tiene problemas de desincronización de secuencias, 
-            // calculamos el ID máximo actual de forma dinámica para evitar colisiones.
+            // 5. Guardado seguro con control de IDs adaptativo ante colisión de secuencias
             try {
-                // Dejamos que JPA intente guardarlo de forma automática
                 user.setUserId(null);
                 User savedUser = userDao.save(user);
                 
@@ -84,10 +81,11 @@ public class UserController {
                 response.put("data", savedUser);
                 return ResponseEntity.ok(response);
                 
-            } catch (StringIndexOutOfBoundsException | org.springframework.dao.DataIntegrityViolationException ex) {
-                // Si la secuencia automática de la BD falla (Error 500 original), forzamos un ID manual seguro
+            } catch (Exception ex) {
+                // CORRECCIÓN: Forzar matemáticamente el tipo Long añadiendo la L al final del operando
                 long totalUsers = userDao.count();
-                user.setUserId(totalUsers + 1 + System.currentTimeMillis() % 1000); // ID único garantizado
+                long manualId = totalUsers + 1L + (System.currentTimeMillis() % 1000L);
+                user.setUserId(manualId);
                 
                 User savedUser = userDao.save(user);
                 
@@ -100,7 +98,6 @@ public class UserController {
         } catch (Exception e) {
             e.printStackTrace();
             
-            // Desenredar la traza del error para capturar el mensaje real de PostgreSQL
             String rootCauseMessage = e.getMessage();
             Throwable cause = e.getCause();
             while (cause != null) {
