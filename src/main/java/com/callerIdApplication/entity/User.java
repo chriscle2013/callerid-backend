@@ -13,7 +13,6 @@ public class User {
     @Column(name = "user_id")
     private Integer userId;
 
-    // Normalizado a camelCase estricto bajo estándar Java
     @Column(name = "phone_number", unique = true, nullable = false)
     private String phoneNumber;
 
