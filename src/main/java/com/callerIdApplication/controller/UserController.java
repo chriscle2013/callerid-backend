@@ -71,7 +71,7 @@ public class UserController {
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 5. Guardado seguro con control de IDs adaptativo ante colisión de secuencias
+            // 5. Guardado seguro con control adaptativo de IDs (Compatible con Integer)
             try {
                 user.setUserId(null);
                 User savedUser = userDao.save(user);
@@ -82,9 +82,12 @@ public class UserController {
                 return ResponseEntity.ok(response);
                 
             } catch (Exception ex) {
-                // CORRECCIÓN: Forzar matemáticamente el tipo Long añadiendo la L al final del operando
+                // Si la secuencia automática falla, calculamos un ID manual compatible con Integer
                 long totalUsers = userDao.count();
-                long manualId = totalUsers + 1L + (System.currentTimeMillis() % 1000L);
+                long timeSeed = System.currentTimeMillis() % 1000000L;
+                
+                // Conversión matemática explícita y segura a Integer sin pérdida de precisión catastrófica
+                int manualId = (int) (totalUsers + 1L + timeSeed);
                 user.setUserId(manualId);
                 
                 User savedUser = userDao.save(user);
