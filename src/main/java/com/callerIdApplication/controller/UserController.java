@@ -31,7 +31,7 @@ public class UserController {
             // 1. Forzar ID nulo para delegar el autoincremental de forma limpia a PostgreSQL
             user.setUserId(null);
 
-            // 2. Normalización estricta del número de teléfono antes de guardar para evitar duplicados invisibles
+            // 2. Normalización estricta del número de teléfono
             if (user.getPhoneNumber() != null) {
                 String cleanRegNumber = user.getPhoneNumber().replaceAll("[^0-9]", "");
                 if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
@@ -39,30 +39,49 @@ public class UserController {
                 }
                 user.setPhoneNumber(cleanRegNumber);
                 
-                // Validación preventiva: Evitar registrar un número que ya existe en el sistema
+                // Validación preventiva: Evitar registrar un número que ya existe
                 User existingUser = userDao.findByphoneNumber(cleanRegNumber);
                 if (existingUser != null) {
                     response.put("status", "error");
                     response.put("message", "El número de teléfono ya se encuentra registrado");
                     return ResponseEntity.status(400).body(response);
                 }
+            } else {
+                response.put("status", "error");
+                response.put("message", "El campo phoneNumber es obligatorio");
+                return ResponseEntity.status(400).body(response);
             }
 
-            // 3. HOMOLOGACIÓN CON ADMIN: Generar un UUID seguro de 8 caracteres para evitar violaciones de tamaño
-            if (user.getUuid() == null || user.getUuid().trim().isEmpty()) {
-                String shortUuid = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 8);
-                user.setUuid(shortUuid);
+            // 3. Generación y homologación estricta de un UUID ultra corto (8 caracteres) libre de guiones
+            // Evita fallas en columnas parametrizadas como VARCHAR(8) o longitudes cortas en BD
+            String shortUuid = UUID.randomUUID().toString().replaceAll("-", "");
+            if (shortUuid.length() > 8) {
+                shortUuid = shortUuid.substring(0, 8);
+            }
+            user.setUuid(shortUuid);
+
+            // 4. Asegurar que los campos String no viajen como nulos si la BD tiene restricciones NOT NULL
+            if (user.getUserName() == null || user.getUserName().trim().isEmpty()) {
+                user.setUserName("Usuario " + user.getPhoneNumber());
+            }
+            if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+                user.setEmail(user.getPhoneNumber() + "@callerid.local");
             }
 
+            // Intentar persistir en PostgreSQL
             User savedUser = userDao.save(user);
+            
             response.put("status", "success");
             response.put("message", "Usuario registrado correctamente");
             response.put("data", savedUser);
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
+            // Imprime la traza completa en los logs de Render para auditoría inmediata
+            e.printStackTrace();
+            
             response.put("status", "error");
-            response.put("message", "Error al registrar usuario: " + e.getMessage());
+            response.put("message", "Error interno en el servidor (DB): " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
