@@ -1,6 +1,8 @@
 package com.callerIdApplication.entity;
 
 import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "app_user")
@@ -9,7 +11,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private Long userId;
+    private Long userId; // Mantenemos Long por seguridad de base de datos
 
     @Column(name = "phone_number", unique = true, nullable = false)
     private String phoneNumber;
@@ -29,7 +31,10 @@ public class User {
     @Column(name = "is_active")
     private boolean isActive = true;
 
-    // Contratistas / Constructores obligatorios de JPA
+    // 🌟 Campo comodín transitorio para evitar que falle UserServiceImpl si maneja contactos en memoria
+    @Transient
+    private List<String> contacts = new ArrayList<>();
+
     public User() {
     }
 
@@ -39,6 +44,18 @@ public class User {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    // 🌟 Getter y Setter del método que extrañaba UserSimpleImpl
+    public List<String> getContacts() {
+        if (this.contacts == null) {
+            this.contacts = new ArrayList<>();
+        }
+        return this.contacts;
+    }
+
+    public void setContacts(List<String> contacts) {
+        this.contacts = contacts;
     }
 
     public String getPhoneNumber() {
@@ -86,6 +103,6 @@ public class User {
     }
 
     public void setActive(boolean active) {
-        isActive = active;
+        this.isActive = active;
     }
 }
