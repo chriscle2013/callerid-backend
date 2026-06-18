@@ -9,7 +9,7 @@ import java.util.List;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // SE ELIMINA @GeneratedValue PARA OBLIGAR A HIBERNATE A RESPETAR EL ID MANUAL QUE LE ENVIAMOS
     @Column(name = "user_id")
     private Integer userId;
 
