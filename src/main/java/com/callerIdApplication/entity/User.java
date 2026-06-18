@@ -9,7 +9,6 @@ import java.util.List;
 public class User {
 
     @Id
-    // SE ELIMINA @GeneratedValue PARA OBLIGAR A HIBERNATE A RESPETAR EL ID MANUAL QUE LE ENVIAMOS
     @Column(name = "user_id")
     private Integer userId;
 
@@ -19,14 +18,14 @@ public class User {
     @Column(name = "password", nullable = false)
     private String password;
 
-    @Transient
-    private String uuid;
-
-    @Transient
+    @Column(name = "user_name", nullable = false) // RE-ACTIVADO FÍSICAMENTE (Requerido por DB)
     private String userName;
 
-    @Transient
+    @Column(name = "email", nullable = false)      // RE-ACTIVADO FÍSICAMENTE (Requerido por DB)
     private String email;
+
+    @Transient
+    private String uuid;
 
     @Transient
     private boolean isActive = true;
@@ -61,17 +60,6 @@ public class User {
         this.password = password;
     }
 
-    public String getUuid() {
-        if (this.uuid == null || this.uuid.isEmpty()) {
-            return "USR" + (this.phoneNumber != null ? this.phoneNumber : "0000");
-        }
-        return uuid;
-    }
-
-    public void setUuid(String uuid) {
-        this.uuid = uuid;
-    }
-
     public String getUserName() {
         return userName;
     }
@@ -86,6 +74,17 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getUuid() {
+        if (this.uuid == null || this.uuid.isEmpty()) {
+            return "USR" + (this.phoneNumber != null ? this.phoneNumber : "0000");
+        }
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
     public boolean isActive() {
