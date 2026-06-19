@@ -14,7 +14,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(new WalkieTalkieHandler(), "/walkietalkie")
+        // Al dejar solo "/", el WebSocket responde directamente en el dominio raíz
+        registry.addHandler(new WalkieTalkieHandler(), "/")
                 .setAllowedOrigins("*");
+        
+        System.out.println("🚀 [PTT-INFRAESTRUCTURA] TÚNEL WEBSOCKET MONTADO DIRECTAMENTE EN LA RAÍZ (/)");
     }
 }
