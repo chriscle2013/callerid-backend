@@ -1,11 +1,9 @@
-package com.callerIdApplication.config; // Verifica el paquete de tu carpeta config
+package com.callerIdApplication.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
-
-// ⚡ IMPORTACIÓN EXACTA ACTUALIZADA:
 import com.callerIdApplication.handler.WalkieTalkieHandler;
 
 @Configuration
@@ -14,7 +12,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        // Al dejar solo "/", el WebSocket responde directamente en el dominio raíz
+        // Escucha directa en la raíz ("/") para evitar problemas con proxies de Render
         registry.addHandler(new WalkieTalkieHandler(), "/")
                 .setAllowedOrigins("*");
         
