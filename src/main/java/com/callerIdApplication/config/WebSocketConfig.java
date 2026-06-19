@@ -5,24 +5,20 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
-// ⚡ IMPORTACIÓN CRUCIAL: Conectamos la configuración con la lógica del Walkie-Talkie
+// ⚡ IMPORTACIÓN CRUCIAL
 import com.callerid.handler.WalkieTalkieHandler;
 
 @Configuration
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    private final WalkieTalkieHandler walkieTalkieHandler;
-
-    // El constructor ahora reconoce perfectamente la clase gracias al import superior
-    public WebSocketConfig(WalkieTalkieHandler walkieTalkieHandler) {
-        this.walkieTalkieHandler = walkieTalkieHandler;
-    }
-
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        // Habilitamos el endpoint de escucha para la app Android
-        registry.addHandler(walkieTalkieHandler, "/walkietalkie")
+        // Instanciamos el Handler directamente en el registro para evitar 
+        // fallos en el orden de carga de Beans de Spring durante el arranque en Render.
+        registry.addHandler(new WalkieTalkieHandler(), "/walkietalkie")
                 .setAllowedOrigins("*");
+        
+        System.out.println("🚀 [PTT-INFRAESTRUCTURA] TÚNEL WEBSOCKET MONTADO EXITOSAMENTE EN /walkietalkie");
     }
 }
