@@ -1,7 +1,7 @@
-package com.callerid.backend.controller;
+package com.callerIdApplication.controller;
 
-import com.callerid.backend.model.SmsReport;
-import com.callerid.backend.repository.SmsRepository;
+import com.callerIdApplication.model.SmsReport;
+import com.callerIdApplication.repostitory.SmsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
