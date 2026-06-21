@@ -1,6 +1,6 @@
 package com.velo.model;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -13,12 +13,12 @@ public class SmsSpamReport {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String senderNumber; // Número que envió el SMS
+    private String senderNumber;
     
     @Column(columnDefinition = "TEXT")
-    private String messageContent; // Contenido del mensaje reportado
+    private String messageContent;
 
-    private String status; // Ej: "PENDING", "APPROVED", "REJECTED"
+    private String status;
 
     private LocalDateTime reportedAt;
 
