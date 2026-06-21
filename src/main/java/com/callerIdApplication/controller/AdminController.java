@@ -11,7 +11,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
-import java.util.List;
 import java.util.Optional;
 
 @Controller
@@ -54,22 +53,18 @@ public class AdminController {
         return "admin/layout";
     }
 
-    // Corregido: @PathVariable Long userId
+    // ========== FORZADO A LONG ==========
     @PostMapping("/numbers/{userId}/mark-spam")
-    public String markUserAsSpam(@PathVariable Long userId, HttpSession session) {
+    public String markUserAsSpam(@PathVariable("userId") Long userId, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
         
-        try {
-            Optional<User> userOpt = userDao.findById(userId);
-            if (userOpt.isPresent()) {
-                Report report = new Report();
-                report.setPhoneNumber(userOpt.get().getPhoneNumber());
-                report.setSpammer(true);
-                report.setComment("Marcado como spam manualmente por Admin");
-                reportDao.save(report);
-            }
-        } catch (Exception e) {
-            System.out.println("Error marcando usuario: " + e.getMessage());
+        Optional<User> userOpt = userDao.findById(userId);
+        if (userOpt.isPresent()) {
+            Report report = new Report();
+            report.setPhoneNumber(userOpt.get().getPhoneNumber());
+            report.setSpammer(true);
+            report.setComment("Marcado como spam manualmente por Admin");
+            reportDao.save(report);
         }
         return "redirect:/admin/numbers";
     }
@@ -82,36 +77,34 @@ public class AdminController {
         return "admin/layout";
     }
     
-    // Corregido: @PathVariable Long id
+    // ========== FORZADO A LONG EN EL PATH VARIABLE Y EN EL FIND BY ID ==========
     @PostMapping("/reports/{id}/toggle-spam")
-    public String toggleSpam(@PathVariable Long id, HttpSession session) {
+    public String toggleSpam(@PathVariable("id") Long id, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
         
-        reportDao.findById(id).ifPresent(report -> {
+        Optional<Report> reportOpt = reportDao.findById(id);
+        if (reportOpt.isPresent()) {
+            Report report = reportOpt.get();
             report.setSpammer(!report.isSpammer());
             reportDao.save(report);
-        });
+        }
         return "redirect:/admin/reports";
     }
     
     @GetMapping("/fix-uuid/{phoneNumber}")
     @ResponseBody
     public String fixUuid(@PathVariable String phoneNumber) {
-        try {
-            User user = userDao.findByphoneNumber(phoneNumber);
-            if (user != null) {
-                if (user.getUuid() == null || user.getUuid().isEmpty()) {
-                    String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
-                    user.setUuid(newUuid);
-                    userDao.save(user);
-                    return "✅ UUID asignado: " + newUuid;
-                }
-                return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
+        User user = userDao.findByphoneNumber(phoneNumber);
+        if (user != null) {
+            if (user.getUuid() == null || user.getUuid().isEmpty()) {
+                String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
+                user.setUuid(newUuid);
+                userDao.save(user);
+                return "✅ UUID asignado: " + newUuid;
             }
-            return "❌ Usuario no encontrado";
-        } catch (Exception e) {
-            return "❌ Error: " + e.getMessage();
+            return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
         }
+        return "❌ Usuario no encontrado";
     }
     
     @GetMapping("/logout")
