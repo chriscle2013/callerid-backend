@@ -256,7 +256,25 @@ public class AdminController {
 
     // ========== FIN DEL ENDPOINT ==========
 
-    
+    // Dentro de AdminController.java
+
+// 1. Marcar número como SPAM GLOBAL (Afecta SMS y Llamadas)
+@PostMapping("/block-global/{phoneNumber}")
+public String blockGlobal(@PathVariable String phoneNumber) {
+    // Aquí guardamos en una tabla de "GlobalBlacklist"
+    // Cuando la App consulte el estado de un número, el backend primero mira esta tabla.
+    blacklistService.addToBlacklist(phoneNumber);
+    return "redirect:/admin/numbers";
+}
+
+// 2. Gestión de SMS Reportados (La "Data" que pides)
+@GetMapping("/sms-data")
+public String listSmsData(Model model, HttpSession session) {
+    if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
+    model.addAttribute("smsList", smsSpamRepository.findAll());
+    model.addAttribute("page", "admin/sms-data");
+    return "admin/layout";
+}
 
     @GetMapping("/logout")
 
