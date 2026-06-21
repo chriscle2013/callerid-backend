@@ -32,9 +32,7 @@
                             <tr th:each="user : ${users}">
                                 <td th:text="${user.userId}">1</td>
                                 <td th:text="${user.userName}">Nombre</td>
-                                <td>
-                                    <code th:text="${user.phoneNumber}">3001234567</code>
-                                </td>
+                                <td><code th:text="${user.phoneNumber}">3001234567</code></td>
                                 <td th:text="${user.email}">email@ejemplo.com</td>
                                 <td>
                                     <span class="badge bg-success">Registrado</span>
@@ -42,18 +40,18 @@
                                 <td>
                                     <span th:if="${user.uuid != null && !user.uuid.isEmpty()}" 
                                           style="background-color: #eef2ff; color: #4f46e5; font-family: monospace; font-size: 0.85rem; padding: 4px 8px; border-radius: 6px; border: 1px solid #e0e7ff; font-weight: bold; display: inline-block;"
-                                          th:text="${user.uuid}">
-                                        A1B2C3
-                                    </span>
-                                    <span th:if="${user.uuid == null || user.uuid.isEmpty()}" 
-                                          class="badge bg-danger text-white">
+                                          th:text="${user.uuid}">A1B2C3</span>
+                                    <span th:if="${user.uuid == null || user.uuid.isEmpty()}" class="badge bg-danger text-white">
                                         <i class="fas fa-exclamation-triangle"></i> SIN UUID
                                     </span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-warning" th:onclick="'alert(\'Funcionalidad en desarrollo. User ID: ' + ${user.userId} + '\')'">
-                                        <i class="fas fa-flag"></i> Marcar Spam
-                                    </button>
+                                    <form th:action="@{'/admin/numbers/' + ${user.userId} + '/mark-spam'}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-warning" 
+                                                onclick="return confirm('¿Estás seguro de marcar este usuario como SPAM?')">
+                                            <i class="fas fa-flag"></i> Marcar Spam
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(users)}">
@@ -66,11 +64,6 @@
                     </table>
                 </div>
             </div>
-        </div>
-        
-        <div class="alert alert-warning mt-4">
-            <i class="fas fa-exclamation-triangle"></i> <strong>Nota:</strong>
-            La funcionalidad de "Marcar Spam" está en desarrollo. Próximamente podrás marcar números como spam directamente desde este panel.
         </div>
     </div>
 </body>
