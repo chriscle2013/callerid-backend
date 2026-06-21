@@ -20,7 +20,6 @@
                                 <th>ID</th>
                                 <th>Nombre</th>
                                 <th>Número</th>
-                                <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -30,14 +29,9 @@
                                 <td th:text="${user.userName}">Nombre</td>
                                 <td><code th:text="${user.phoneNumber}">3001234567</code></td>
                                 <td>
-                                    <span th:if="${user.isSpam}" class="badge bg-danger">SPAM</span>
-                                    <span th:if="${!user.isSpam}" class="badge bg-success">Normal</span>
-                                </td>
-                                <td>
                                     <form th:action="@{'/admin/numbers/' + ${user.userId} + '/toggle-spam'}" method="post">
-                                        <button type="submit" class="btn btn-sm" th:classappend="${user.isSpam} ? 'btn-warning' : 'btn-danger'">
-                                            <i class="fas fa-flag"></i> 
-                                            <span th:text="${user.isSpam} ? 'Quitar Spam' : 'Marcar Spam'"></span>
+                                        <button type="submit" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-flag"></i> Toggle Spam
                                         </button>
                                     </form>
                                 </td>
