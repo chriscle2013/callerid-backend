@@ -1,6 +1,6 @@
 package com.velo.model;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -20,7 +20,7 @@ public class PhoneNumber {
 
     private boolean isSpam;
 
-    private String reportedBy; // UUID del usuario que lo reportó
+    private String reportedBy;
 
     private LocalDateTime createdAt;
 
