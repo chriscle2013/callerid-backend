@@ -1,6 +1,6 @@
 package com.callerIdApplication.repostitory;
 
-import com.velo.model.PhoneNumber;
+import com.callerIdApplication.model.PhoneNumber;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
