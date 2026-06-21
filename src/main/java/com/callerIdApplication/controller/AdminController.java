@@ -4,7 +4,7 @@ import com.callerIdApplication.entity.User;
 import com.callerIdApplication.repostitory.ReportDao;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
-import com.callerIdApplication.repository.SmsRepository;
+import com.callerIdApplication.repostitory.SmsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
