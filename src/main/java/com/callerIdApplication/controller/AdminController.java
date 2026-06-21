@@ -54,7 +54,7 @@ public class AdminController {
         return "admin/layout";
     }
 
-    // ========== CORRECCIÓN AQUÍ: Uso de Long en lugar de Integer ==========
+    // Corregido: @PathVariable Long userId
     @PostMapping("/numbers/{userId}/mark-spam")
     public String markUserAsSpam(@PathVariable Long userId, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
@@ -82,6 +82,7 @@ public class AdminController {
         return "admin/layout";
     }
     
+    // Corregido: @PathVariable Long id
     @PostMapping("/reports/{id}/toggle-spam")
     public String toggleSpam(@PathVariable Long id, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
