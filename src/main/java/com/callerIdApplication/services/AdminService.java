@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Services
+@Service
 public class AdminService {
 
     @Autowired
