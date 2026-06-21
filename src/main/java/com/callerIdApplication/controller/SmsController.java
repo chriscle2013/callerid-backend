@@ -1,7 +1,7 @@
 package com.callerIdApplication.controller;
 
 import com.callerIdApplication.model.SmsReport;
-import com.callerIdApplication.repostitory.SmsRepository;
+import com.callerIdApplication.repostitory.SmsSpamRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,11 +10,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/sms")
+@RequestMapping("/api/sms")
 public class SmsController {
 
     @Autowired
-    private SmsRepository smsRepository;
+    private SmsSpamRepository smsSpamRepository;
 
     @PostMapping("/report")
     public ResponseEntity<?> reportSms(@RequestBody SmsReport report, @RequestParam String key) {
