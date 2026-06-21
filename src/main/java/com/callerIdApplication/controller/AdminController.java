@@ -24,8 +24,28 @@ public class AdminController {
     
     private static final String ADMIN_PASSWORD = "admin123";
     
-    // ... [Métodos de Login, Dashboard, Logout se mantienen igual] ...
-
+    @GetMapping("/login")
+    public String showLoginForm() { return "admin/login"; }
+    
+    @PostMapping("/login")
+    public String doLogin(@RequestParam String password, HttpSession session) {
+        if (ADMIN_PASSWORD.equals(password)) {
+            session.setAttribute("admin_logged", true);
+            return "redirect:/admin/dashboard";
+        }
+        return "redirect:/admin/login?error=true";
+    }
+    
+    @GetMapping("/dashboard")
+    public String dashboard(Model model, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
+        model.addAttribute("totalUsers", userDao.count());
+        model.addAttribute("activeSessions", sessionDao.count());
+        model.addAttribute("totalReports", reportDao.count());
+        model.addAttribute("page", "admin/dashboard");
+        return "admin/layout";
+    }
+    
     @GetMapping("/numbers")
     public String listNumbers(Model model, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
@@ -34,7 +54,7 @@ public class AdminController {
         return "admin/layout";
     }
 
-    // ========== NUEVO: Acción para Marcar Usuario como Spam ==========
+    // ========== CORRECCIÓN AQUÍ: Uso de Long en lugar de Integer ==========
     @PostMapping("/numbers/{userId}/mark-spam")
     public String markUserAsSpam(@PathVariable Long userId, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
@@ -42,7 +62,6 @@ public class AdminController {
         try {
             Optional<User> userOpt = userDao.findById(userId);
             if (userOpt.isPresent()) {
-                // Creamos un nuevo reporte de spam para este usuario
                 Report report = new Report();
                 report.setPhoneNumber(userOpt.get().getPhoneNumber());
                 report.setSpammer(true);
@@ -50,12 +69,11 @@ public class AdminController {
                 reportDao.save(report);
             }
         } catch (Exception e) {
-            System.out.println("Error marcando usuario como spam: " + e.getMessage());
+            System.out.println("Error marcando usuario: " + e.getMessage());
         }
         return "redirect:/admin/numbers";
     }
-
-    // ========== Lógica existente para reportes ==========
+    
     @GetMapping("/reports")
     public String listReports(Model model, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
@@ -74,6 +92,30 @@ public class AdminController {
         });
         return "redirect:/admin/reports";
     }
-
-    // ... [Tu método fixUuid se mantiene igual] ...
+    
+    @GetMapping("/fix-uuid/{phoneNumber}")
+    @ResponseBody
+    public String fixUuid(@PathVariable String phoneNumber) {
+        try {
+            User user = userDao.findByphoneNumber(phoneNumber);
+            if (user != null) {
+                if (user.getUuid() == null || user.getUuid().isEmpty()) {
+                    String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
+                    user.setUuid(newUuid);
+                    userDao.save(user);
+                    return "✅ UUID asignado: " + newUuid;
+                }
+                return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
+            }
+            return "❌ Usuario no encontrado";
+        } catch (Exception e) {
+            return "❌ Error: " + e.getMessage();
+        }
+    }
+    
+    @GetMapping("/logout")
+    public String logout(HttpSession session) {
+        session.invalidate();
+        return "redirect:/admin/login";
+    }
 }
