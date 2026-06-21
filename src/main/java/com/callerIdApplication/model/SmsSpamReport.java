@@ -1,4 +1,4 @@
-package com.velo.model;
+package com.callerIdApplication.model;
 
 import javax.persistence.*;
 import lombok.Data;
