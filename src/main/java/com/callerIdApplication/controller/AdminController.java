@@ -118,6 +118,17 @@ public class AdminController {
         
         return "redirect:/admin/reports";
     }
+    //
+    @PostMapping("/numbers/{id}/toggle-spam")
+    public String toggleNumberSpam(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
+        
+        userDao.findById(id).ifPresent(u -> {
+            u.setSpammer(!u.isSpammer());
+            userDao.save(u);
+        });
+        return "redirect:/admin/numbers";
+    }
     // 2. NUEVO: Marcar/Desmarcar Spam en Números
     @PostMapping("/numbers/{id}/toggle-spam")
     public String toggleNumberSpam(@PathVariable Long id, HttpSession session) {
