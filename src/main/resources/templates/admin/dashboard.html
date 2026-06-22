@@ -5,68 +5,64 @@
     <div th:replace="admin/layout :: body"></div>
     
     <div th:fragment="content">
-        <div class="row">
-            <div class="col-md-6 mb-4">
-                <div class="card text-white bg-primary">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Usuarios Registrados</h6>
-                                <h2 class="display-4" th:text="${totalUsers}">0</h2>
-                            </div>
-                            <i class="fas fa-users fa-3x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-6 mb-4">
-                <div class="card text-white bg-success">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Sesiones Activas</h6>
-                                <h2 class="display-4" th:text="${activeSessions}">0</h2>
-                            </div>
-                            <i class="fas fa-circle fa-3x opacity-50"></i>
-                        </div>
-                    </div>
+    <div class="row">
+        <!-- Card Usuarios -->
+        <div class="col-md-4 mb-4">
+            <div class="card bg-dark text-white border-primary shadow">
+                <div class="card-body">
+                    <h5>Total Usuarios</h5>
+                    <h2 class="display-5" th:text="${totalUsers}">0</h2>
                 </div>
             </div>
         </div>
-        
-        <div class="card">
-            <div class="card-header bg-white">
-                <h6 class="mb-0">
-                    <i class="fas fa-info-circle"></i> Información del Sistema
-                </h6>
-            </div>
-            <div class="card-body">
-                <table class="table table-borderless">
-                    <tr>
-                        <td width="200"><strong>🌐 API URL:</strong></td>
-                        <td><code>https://callerid-backend-n41w.onrender.com</code></td>
-                    </tr>
-                    <tr>
-                        <td><strong>📱 App Android:</strong></td>
-                        <td>Conectada correctamente</td>
-                    </tr>
-                    <tr>
-                        <td><strong>🗄️ Base de Datos:</strong></td>
-                        <td>PostgreSQL en Render</td>
-                    </tr>
-                    <tr>
-                        <td><strong>🟢 Estado:</strong></td>
-                        <td><span class="badge bg-success">Activo</span></td>
-                    </tr>
-                </table>
+        <!-- Card Reportes de Llamada -->
+        <div class="col-md-4 mb-4">
+            <div class="card bg-dark text-white border-danger shadow">
+                <div class="card-body">
+                    <h5>Spam Telefónico</h5>
+                    <h2 class="display-5" th:text="${totalReports}">0</h2>
+                </div>
             </div>
         </div>
-        
-        <div class="alert alert-info mt-4">
-            <i class="fas fa-lightbulb"></i> <strong>Consejo:</strong>
-            Ve a la sección <strong>"Números Registrados"</strong> para ver todos los usuarios y gestionar reportes de spam.
+        <!-- Card SMS Fraudulentos -->
+        <div class="col-md-4 mb-4">
+            <div class="card bg-dark text-white border-warning shadow">
+                <div class="card-body">
+                    <h5>SMS Fraudulentos</h5>
+                    <h2 class="display-5" th:text="${totalSmsSpam}">0</h2>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- Feed de Actividad Reciente -->
+    <div class="card bg-dark text-white mt-4 shadow">
+        <div class="card-header border-secondary">🔥 Últimas Identificaciones en Velo</div>
+        <div class="card-body">
+            <table class="table table-dark table-hover">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Número Consultado</th>
+                        <th>Tipo</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="h : ${recentHistory}">
+                        <td th:text="${h.userPhoneNumber}"></td>
+                        <td th:text="${h.searchedNumber}"></td>
+                        <td>
+                            <span th:if="${h.type == 'SMS'}" class="badge bg-info">SMS</span>
+                            <span th:if="${h.type != 'SMS'}" class="badge bg-primary">CALL</span>
+                        </td>
+                        <td th:text="${h.searchDate}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
     </div>
 </body>
 </html>
