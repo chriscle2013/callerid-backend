@@ -1,19 +1,24 @@
 package com.callerIdApplication.controller;
+
 import com.callerIdApplication.entity.Report;
 import com.callerIdApplication.entity.User;
-import com.callerIdApplication.repostitory.ReportDao;
-import com.callerIdApplication.repostitory.SessionDao;
-import com.callerIdApplication.repostitory.UserDao;
+import com.callerIdApplication.entity.SearchHistory;
+import com.callerIdApplication.entity.SmsReport;
+import com.callerIdApplication.repostitory.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
 import javax.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
+
     @Autowired
     private UserDao userDao;
     
@@ -22,14 +27,25 @@ public class AdminController {
     
     @Autowired
     private ReportDao reportDao;
-    
+
+    @Autowired
+    private HistoryDao historyDao; // Para el feed de actividad
+
+    @Autowired
+    private SmsDao smsDao; // Debes tener este repositorio para los reportes de SMS
+
     private static final String ADMIN_PASSWORD = "admin123";
-    
+
+    // --- SEGURIDAD: MÉTODO AUXILIAR ---
+    private boolean isAdmin(HttpSession session) {
+        return session.getAttribute("admin_logged") != null;
+    }
+
     @GetMapping("/login")
     public String showLoginForm() {
         return "admin/login";
     }
-    
+
     @PostMapping("/login")
     public String doLogin(@RequestParam String password, HttpSession session) {
         if (ADMIN_PASSWORD.equals(password)) {
@@ -38,70 +54,95 @@ public class AdminController {
         }
         return "redirect:/admin/login?error=true";
     }
-    
+
     @GetMapping("/dashboard")
     public String dashboard(Model model, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return "redirect:/admin/login";
-        }
-        
-        long totalUsers = userDao.count();
-        long activeSessions = sessionDao.count();
-        long totalReports = reportDao.count();
-        
-        model.addAttribute("totalUsers", totalUsers);
-        model.addAttribute("activeSessions", activeSessions);
-        model.addAttribute("totalReports", totalReports);
+        if (!isAdmin(session)) return "redirect:/admin/login";
+
+        // Estadísticas principales
+        model.addAttribute("totalUsers", userDao.count());
+        model.addAttribute("activeSessions", sessionDao.count());
+        model.addAttribute("totalReports", reportDao.count());
+        model.addAttribute("totalSmsSpam", smsDao.count());
+
+        // Feed de actividad reciente (Últimos 10 movimientos en la app)
+        List<SearchHistory> recentActivity = historyDao.findAll();
+        model.addAttribute("recentHistory", recentActivity.stream()
+                .limit(10)
+                .collect(Collectors.toList()));
+
         model.addAttribute("page", "admin/dashboard");
         return "admin/layout";
     }
-    
+
     @GetMapping("/numbers")
     public String listNumbers(Model model, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return "redirect:/admin/login";
-        }
+        if (!isAdmin(session)) return "redirect:/admin/login";
         
-        Iterable<User> allUsers = userDao.findAll();
-        model.addAttribute("users", allUsers);
+        model.addAttribute("users", userDao.findAll());
         model.addAttribute("page", "admin/numbers");
         return "admin/layout";
     }
-    
+
+    // 🛡️ VERIFICAR USUARIO (Añadir escudo oficial)
+    @PostMapping("/user/{id}/verify")
+    public String verifyUser(@PathVariable Long id, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/admin/login";
+        
+        Optional<User> userOpt = userDao.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (!user.getUserName().contains("🛡️")) {
+                user.setUserName("🛡️ " + user.getUserName());
+                userDao.save(user);
+            }
+        }
+        return "redirect:/admin/numbers";
+    }
+
     @GetMapping("/reports")
     public String listReports(Model model, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return "redirect:/admin/login";
-        }
+        if (!isAdmin(session)) return "redirect:/admin/login";
         
-        List<Report> allReports = reportDao.findAll();
-        model.addAttribute("reports", allReports);
+        model.addAttribute("reports", reportDao.findAll());
         model.addAttribute("page", "admin/reports");
         return "admin/layout";
     }
-    
+
+    // 📥 NUEVO: LISTAR REPORTES DE SMS SPAM
+    @GetMapping("/sms-reports")
+    public String listSmsReports(Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/admin/login";
+        
+        model.addAttribute("smsReports", smsDao.findAll());
+        model.addAttribute("page", "admin/sms-reports");
+        return "admin/layout";
+    }
+
+    @PostMapping("/sms-reports/{id}/delete")
+    public String deleteSmsReport(@PathVariable Long id, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/admin/login";
+        smsDao.deleteById(id);
+        return "redirect:/admin/sms-reports";
+    }
+
     @PostMapping("/reports/{id}/toggle-spam")
     public String toggleSpam(@PathVariable Long id, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return "redirect:/admin/login";
-        }
+        if (!isAdmin(session)) return "redirect:/admin/login";
         
         try {
             Optional<Report> reportOpt = reportDao.findById(id);
             if (reportOpt.isPresent()) {
                 Report report = reportOpt.get();
-                boolean newStatus = !report.isSpammer();
-                report.setSpammer(newStatus);
+                report.setSpammer(!report.isSpammer());
                 reportDao.save(report);
             }
         } catch (Exception e) {
             System.out.println("Error toggling spam: " + e.getMessage());
         }
-        
         return "redirect:/admin/reports";
     }
-    
-    // ========== NUEVO ENDPOINT PARA ASIGNAR UUID FIJO ==========
+
     @GetMapping("/fix-uuid/{phoneNumber}")
     @ResponseBody
     public String fixUuid(@PathVariable String phoneNumber) {
@@ -117,13 +158,12 @@ public class AdminController {
                     return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
                 }
             }
-            return "❌ Usuario no encontrado con número: " + phoneNumber;
+            return "❌ Usuario no encontrado";
         } catch (Exception e) {
             return "❌ Error: " + e.getMessage();
         }
     }
-    // ========== FIN DEL ENDPOINT ==========
-    
+
     @GetMapping("/logout")
     public String logout(HttpSession session) {
         session.invalidate();
