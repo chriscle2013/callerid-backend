@@ -9,7 +9,7 @@
             <div class="card-header bg-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="fas fa-list"></i> Lista de Usuarios</h6>
-                    <span class="badge bg-primary" th:text="${#lists.size(users)} + ' usuarios'">0 usuarios</span>
+                    <span class="badge bg-primary" th:text="${#lists.size(users)} + ' usuarios'"></span>
                 </div>
             </div>
             <div class="card-body">
@@ -19,28 +19,26 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Nombre</th>
-                                <th>Teléfono</th>
-                                <th>Email</th>
-                                <th>UUID</th>
-                                <th>Estado</th>
+                                <th>Número</th>
+                                <th>Estado SPAM</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="user : ${users}">
-                                <td th:text="${user.userId}">1</td>
-                                <td th:text="${user.userName}">Nombre</td>
-                                <td><code th:text="${user.phoneNumber}">3001234567</code></td>
-                                <td th:text="${user.email}">email@ejemplo.com</td>
-                                <td><span th:text="${user.uuid}">A1B2C3</span></td>
+                                <td th:text="${user.userId}"></td>
+                                <td th:text="${user.userName}"></td>
+                                <td><code th:text="${user.phoneNumber}"></code></td>
                                 <td>
-                                    <span th:if="${user.spammer}" class="badge bg-danger">SPAM</span>
-                                    <span th:if="${!user.spammer}" class="badge bg-success">Normal</span>
+                                    <span th:if="${user.spammer}" class="badge bg-danger">🚨 SPAM</span>
+                                    <span th:unless="${user.spammer}" class="badge bg-success">✅ Seguro</span>
                                 </td>
                                 <td>
-                                    <form th:action="@{'/admin/numbers/' + ${user.userId} + '/toggle-spam'}" method="post">
-                                        <button type="submit" class="btn btn-sm btn-warning">
-                                            <i class="fas fa-flag"></i> Toggle Spam
+                                    <form th:action="@{/admin/numbers/{id}/toggle-spam(id=${user.userId})}" method="post" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm" 
+                                                th:classappend="${user.spammer} ? 'btn-success' : 'btn-warning'">
+                                            <i class="fas" th:classappend="${user.spammer} ? 'fa-check' : 'fa-flag'"></i>
+                                            <span th:text="${user.spammer} ? 'Marcar como seguro' : 'Marcar como spam'"></span>
                                         </button>
                                     </form>
                                 </td>
