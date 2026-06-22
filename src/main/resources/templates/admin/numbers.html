@@ -1,79 +1,127 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="admin/layout :: head"></head>
-<body>
+<body style="background-color: #020617;">
     <div th:replace="admin/layout :: body"></div>
     
     <div th:fragment="content">
-        <div class="card shadow-lg border-0" style="border-radius: 20px; background-color: #0F172A; color: white;">
-            <div class="card-header bg-transparent border-secondary py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-shield-alt text-primary"></i> Moderación de Comunidad Velo
-                    </h5>
-                    <span class="badge rounded-pill bg-primary px-3" th:text="${#lists.size(users)} + ' Miembros'">0 Miembros</span>
-                </div>
+        <!-- Encabezado de Sección -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="text-white fw-bold mb-0">Moderación de Comunidad</h3>
+                <p class="text-muted small">Gestiona los permisos y la reputación de los usuarios de Velo.</p>
             </div>
-            <div class="card-body">
+            <div class="text-end">
+                <span class="badge bg-primary p-2 px-3 shadow" style="border-radius: 10px;">
+                    <i class="fas fa-users me-2"></i> <span th:text="${#lists.size(users)}">0</span> Miembros Registrados
+                </span>
+            </div>
+        </div>
+
+        <!-- Tabla Maestra de Usuarios -->
+        <div class="card shadow-lg border-0" style="border-radius: 24px; background-color: #0F172A; overflow: hidden;">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-dark table-hover align-middle">
-                        <thead class="text-secondary small text-uppercase">
+                    <table class="table table-dark table-hover align-middle mb-0" style="border-color: #1E293B;">
+                        <thead class="text-secondary small text-uppercase" style="background-color: #1E293B;">
                             <tr>
-                                <th>Usuario</th>
+                                <th class="ps-4 py-3">Identidad Velo</th>
                                 <th>Contacto</th>
-                                <th>Seguridad (Key)</th>
-                                <th class="text-center">Acciones Premium</th>
+                                <th>Llave de Seguridad</th>
+                                <th class="text-center">Acciones de Moderador</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="user : ${users}">
-                                <td>
+                            <tr th:each="user : ${users}" style="border-bottom: 1px solid #1E293B;">
+                                <!-- Columna Usuario -->
+                                <td class="ps-4 py-3">
                                     <div class="d-flex align-items-center">
                                         <div class="avatar-circle me-3" 
-                                             style="width: 40px; height: 40px; background: #1E293B; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                                            <i class="fas fa-user text-info"></i>
+                                             style="width: 48px; height: 48px; background: linear-gradient(135deg, #1E293B, #0F172A); border-radius: 14px; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
+                                            <i th:class="${user.userName.contains('🚨')} ? 'fas fa-user-slash text-danger' : 'fas fa-user-shield text-info'"></i>
                                         </div>
                                         <div>
-                                            <div class="fw-bold" th:text="${user.userName}">Nombre</div>
+                                            <div class="fw-bold text-white fs-6" th:text="${user.userName}">Nombre</div>
                                             <small class="text-muted" th:text="${user.email}">email@ejemplo.com</small>
                                         </div>
                                     </div>
                                 </td>
+
+                                <!-- Columna Teléfono -->
                                 <td>
-                                    <span class="badge bg-secondary font-monospace" th:text="${user.phoneNumber}">300123...</span>
+                                    <span class="badge bg-dark text-info border border-info p-2" style="font-family: 'Courier New', monospace;">
+                                        <i class="fas fa-phone-alt me-1 small"></i> <span th:text="${user.phoneNumber}">300123...</span>
+                                    </span>
                                 </td>
+
+                                <!-- Columna UUID -->
                                 <td>
-                                    <code class="small p-1 px-2 rounded" 
-                                          style="background: #1E293B; color: #60A5FA; border: 1px solid #334155;"
-                                          th:text="${user.uuid != null ? user.uuid : 'SIN LLAVE'}">A1B2C3</code>
+                                    <div class="d-flex align-items-center">
+                                        <code class="small p-2 px-3 rounded-pill" 
+                                              style="background: #020617; color: #60A5FA; border: 1px solid #1E293B;"
+                                              th:text="${user.uuid != null ? user.uuid : 'PENDIENTE'}">A1B2C3</code>
+                                    </div>
                                 </td>
+
+                                <!-- Columna Acciones -->
                                 <td>
                                     <div class="d-flex justify-content-center gap-2">
-                                        <!-- Botón Verificar -->
+                                        <!-- Verificar (Solo si no está ya verificado) -->
                                         <form th:action="@{/admin/user/{id}/verify(id=${user.userId})}" method="post">
-                                            <button type="submit" class="btn btn-sm btn-outline-info" title="Verificar Usuario">
-                                                <i class="fas fa-check-shield"></i> Verificar
+                                            <button type="submit" class="btn btn-sm btn-outline-primary px-3" 
+                                                    th:if="${!user.userName.contains('🛡️')}"
+                                                    style="border-radius: 10px;" title="Verificar Usuario">
+                                                <i class="fas fa-check-double me-1"></i> Verificar
                                             </button>
                                         </form>
                                         
-                                        <!-- Botón Marcar Spam -->
-                                        <form th:action="@{/admin/user/{id}/mark-spam(id=${user.userId})}" method="post">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                        <!-- BOTÓN DINÁMICO: BANEAR / DESBANEAR -->
+                                        <form th:action="@{/admin/user/{id}/toggle-spam(id=${user.userId})}" method="post">
+                                            <!-- Si NO es spammer (botón rojo) -->
+                                            <button th:if="${!user.userName.contains('🚨')}" 
+                                                    type="submit" class="btn btn-sm btn-outline-danger px-3" 
+                                                    style="border-radius: 10px;"
                                                     onclick="return confirm('¿Seguro que deseas marcar este número como SPAMMER GLOBAL?')">
-                                                <i class="fas fa-ban"></i> Banear
+                                                <i class="fas fa-ban me-1"></i> Banear
+                                            </button>
+                                            
+                                            <!-- Si YA es spammer (botón verde de rescate) -->
+                                            <button th:if="${user.userName.contains('🚨')}" 
+                                                    type="submit" class="btn btn-sm btn-success px-3" 
+                                                    style="border-radius: 10px;"
+                                                    onclick="return confirm('¿Restaurar la reputación de este usuario?')">
+                                                <i class="fas fa-unlock me-1"></i> Desbanear
                                             </button>
                                         </form>
 
-                                        <!-- Botón Fix UUID -->
+                                        <!-- Reparar UUID -->
                                         <a th:href="@{/admin/fix-uuid/{num}(num=${user.phoneNumber})}" 
-                                           class="btn btn-sm btn-outline-warning" target="_blank">
-                                            <i class="fas fa-key"></i> Fix
+                                           class="btn btn-sm btn-dark px-2" style="border-radius: 10px; border: 1px solid #334155;" target="_blank">
+                                            <i class="fas fa-tools text-warning"></i>
                                         </a>
                                     </div>
                                 </td>
                             </tr>
+
+                            <!-- Estado Vacío -->
+                            <tr th:if="${#lists.isEmpty(users)}">
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="fas fa-user-secret fa-3x d-block mb-3 opacity-20"></i>
+                                    No hay usuarios registrados en el sistema.
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tip para el Administrador -->
+        <div class="mt-4 p-3 border border-primary border-opacity-25 rounded-4" style="background-color: rgba(37, 99, 235, 0.05);">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-info-circle text-primary me-3 fs-4"></i>
+                <div class="small text-muted">
+                    <strong class="text-white">Dato de Moderador:</strong> Al banear a un usuario, su número entrará en la base de datos de <strong>Velo Cloud</strong> como spammer, alertando a toda la comunidad de inmediato.
                 </div>
             </div>
         </div>
