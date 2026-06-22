@@ -17,15 +17,24 @@ public class SearchHistory {
     @Temporal(TemporalType.TIMESTAMP)
     private Date searchDate;
 
+    // --- NUEVOS CAMPOS PARA SMS ---
+    private String type;            // Guardará "CALL" o "SMS"
+    
+    @Column(columnDefinition = "TEXT")
+    private String messageBody;     // Guardará el contenido del mensaje de texto
+
     public SearchHistory() {}
 
-    public SearchHistory(String userPhoneNumber, String searchedNumber) {
+    // Constructor actualizado para soportar todos los datos
+    public SearchHistory(String userPhoneNumber, String searchedNumber, String type, String messageBody) {
         this.userPhoneNumber = userPhoneNumber;
         this.searchedNumber = searchedNumber;
-        this.searchDate = new Date(); // Asigna la fecha y hora actual del servidor automáticamente
+        this.type = type;
+        this.messageBody = messageBody;
+        this.searchDate = new Date(); 
     }
 
-    // Getters y Setters
+    // Getters y Setters existentes
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -37,4 +46,11 @@ public class SearchHistory {
 
     public Date getSearchDate() { return searchDate; }
     public void setSearchDate(Date searchDate) { this.searchDate = searchDate; }
+
+    // --- NUEVOS GETTERS Y SETTERS ---
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    public String getMessageBody() { return messageBody; }
+    public void setMessageBody(String messageBody) { this.messageBody = messageBody; }
 }
