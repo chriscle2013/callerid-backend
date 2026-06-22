@@ -104,27 +104,47 @@ public class AdminController {
         return "redirect:/admin/numbers";
     }
 
-    @PostMapping("/user/{id}/mark-spam")
-    public String markUserAsSpam(@PathVariable Integer id, HttpSession session) {
-        if (!isAdmin(session)) return "redirect:/admin/login";
+    // 🚨 BANEAR / DESBANEAR GLOBAL
+@PostMapping("/user/{id}/toggle-spam")
+public String toggleUserSpam(@PathVariable Integer id, HttpSession session) {
+    if (!isAdmin(session)) return "redirect:/admin/login";
 
-        Optional<User> userOpt = userDao.findById(id);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
+    Optional<User> userOpt = userDao.findById(id);
+    if (userOpt.isPresent()) {
+        User user = userOpt.get();
+        String phone = user.getPhoneNumber();
+        
+        // 1. Buscar si ya está en la lista negra
+        List<Spam> spamList = spamDao.findBynumber(phone);
+        Spam spamRecord = (spamList != null && !spamList.isEmpty()) ? spamList.get(0) : null;
+
+        if (spamRecord != null && spamRecord.getSpammer()) {
+            // DESBANEAR
+            spamRecord.setSpammer(false);
+            spamRecord.setName("USUARIO RECUPERADO");
+            spamDao.save(spamRecord);
             
-            List<Spam> existingSpam = spamDao.findBynumber(user.getPhoneNumber());
-            Spam spamRecord = (existingSpam != null && !existingSpam.isEmpty()) ? existingSpam.get(0) : new Spam();
-            
-            spamRecord.setNumber(user.getPhoneNumber());
+            // Quitar etiqueta del nombre del usuario
+            if (user.getUserName().contains("🚨 SPAMMER: ")) {
+                user.setUserName(user.getUserName().replace("🚨 SPAMMER: ", ""));
+            }
+        } else {
+            // BANEAR
+            if (spamRecord == null) spamRecord = new Spam();
+            spamRecord.setNumber(phone);
             spamRecord.setName("SPAMMER REPORTADO");
             spamRecord.setSpammer(true);
             spamDao.save(spamRecord);
-
-            user.setUserName("🚨 SPAMMER: " + user.getUserName());
-            userDao.save(user);
+            
+            // Añadir etiqueta al nombre
+            if (!user.getUserName().contains("🚨 SPAMMER: ")) {
+                user.setUserName("🚨 SPAMMER: " + user.getUserName());
+            }
         }
-        return "redirect:/admin/numbers";
+        userDao.save(user);
     }
+    return "redirect:/admin/numbers";
+}
 
     @GetMapping("/reports")
     public String listReports(Model model, HttpSession session) {
