@@ -18,13 +18,18 @@ public class HistoryController {
     @Autowired
     private HistoryDao historyDao;
 
-    // 📥 Endpoint para guardar una nueva llamada o búsqueda en el historial
+    // 📥 Endpoint actualizado para guardar llamadas o SMS en el historial
     @PostMapping("/add")
     public ResponseEntity<Map<String, Object>> addHistoryRecord(@RequestBody Map<String, String> requestData) {
         Map<String, Object> response = new HashMap<>();
         try {
             String userPhoneNumber = requestData.get("userPhoneNumber");
             String searchedNumber = requestData.get("searchedNumber");
+            
+            // --- NUEVA LÓGICA PARA SMS ---
+            // Obtenemos el tipo (si no viene, por defecto es CALL) y el contenido del mensaje
+            String type = requestData.getOrDefault("type", "CALL");
+            String messageBody = requestData.get("messageBody");
 
             if (searchedNumber == null || searchedNumber.isEmpty()) {
                 response.put("status", "error");
@@ -32,12 +37,12 @@ public class HistoryController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Si viene vacío (ej. llamada anónima), lo estandarizamos como "Anonymous" o desconocido
             if (userPhoneNumber == null || userPhoneNumber.isEmpty()) {
                 userPhoneNumber = "Anonymous";
             }
 
-            SearchHistory newRecord = new SearchHistory(userPhoneNumber, searchedNumber);
+            // Usamos el nuevo constructor de 4 parámetros definido en SearchHistory.java
+            SearchHistory newRecord = new SearchHistory(userPhoneNumber, searchedNumber, type, messageBody);
             SearchHistory savedRecord = historyDao.save(newRecord);
 
             response.put("status", "success");
