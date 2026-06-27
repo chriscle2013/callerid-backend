@@ -27,29 +27,27 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody Map<String, Object> payload) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Extracción e identificación de variables dinámicas del Celular
             String phoneNumber = payload.containsKey("phoneNumber") ? String.valueOf(payload.get("phoneNumber")) : null;
             String password = payload.containsKey("password") ? String.valueOf(payload.get("password")) : null;
             
-            // Captura de datos de nombre y correo para satisfacer las restricciones físicas de la DB
-            String userName = payload.containsKey("userName") ? String.valueOf(payload.get("userName")) : "Usuario Movil";
+            // Captura flexible de nombres para la App
+            String userName = payload.containsKey("userName") ? String.valueOf(payload.get("userName")) : "Usuario Velo";
             if (payload.containsKey("name")) userName = String.valueOf(payload.get("name"));
             
-            String email = payload.containsKey("email") ? String.valueOf(payload.get("email")) : "correo@temporal.com";
+            String email = payload.containsKey("email") ? String.valueOf(payload.get("email")) : "";
+            String work = payload.containsKey("work") ? String.valueOf(payload.get("work")) : "";
 
-            if (phoneNumber == null || phoneNumber.trim().isEmpty() || "null".equalsIgnoreCase(phoneNumber)) {
+            if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
                 response.put("status", "error");
-                response.put("message", "Error: Falta phoneNumber en peticion.");
+                response.put("message", "Falta número de teléfono");
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 2. Normalización del Teléfono
             String cleanRegNumber = phoneNumber.replaceAll("[^0-9]", "");
             if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
                 cleanRegNumber = cleanRegNumber.substring(2);
             }
 
-            // 3. Verificación de duplicados / Actualización segura
             User existingUser = userDao.findByPhoneNumber(cleanRegNumber);
             User savedUser;
 
@@ -57,23 +55,23 @@ public class UserController {
                 if (password != null) existingUser.setPassword(password);
                 existingUser.setUserName(userName);
                 existingUser.setEmail(email);
+                // Si agregaste el campo work en la entidad User:
+                // existingUser.setWork(work); 
                 savedUser = userDao.save(existingUser);
-                response.put("message", "Usuario existente actualizado con éxito.");
+                response.put("message", "Perfil actualizado con éxito.");
             } else {
-                // 4. Inserción Limpia con TODOS los campos obligatorios mapeados
                 User newUser = new User();
                 newUser.setPhoneNumber(cleanRegNumber);
                 newUser.setPassword(password != null ? password : "123456");
                 newUser.setUserName(userName);
                 newUser.setEmail(email);
+                // newUser.setWork(work);
 
-                // Generador aleatorio e inmune a colisiones para user_id
                 long timeSeed = System.currentTimeMillis() % 899999L;
-                int manualId = (int) (100000 + timeSeed);
-                newUser.setUserId(manualId);
+                newUser.setUserId((int) (100000 + timeSeed));
 
                 savedUser = userDao.save(newUser);
-                response.put("message", "¡Usuario registrado exitosamente en producción!");
+                response.put("message", "Usuario registrado exitosamente.");
             }
 
             response.put("status", "success");
@@ -82,15 +80,8 @@ public class UserController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            String rootCauseMessage = e.getMessage();
-            Throwable cause = e.getCause();
-            while (cause != null) {
-                rootCauseMessage = cause.getMessage();
-                cause = cause.getCause();
-            }
             response.put("status", "error");
-            response.put("message", "Falla en persistencia: " + rootCauseMessage);
+            response.put("message", "Error en registro: " + e.getMessage());
             return ResponseEntity.status(400).body(response);
         }
     }
@@ -104,7 +95,7 @@ public class UserController {
 
             if (phoneNumber == null || password == null) {
                 response.put("status", "error");
-                response.put("message", "Faltan parámetros requeridos");
+                response.put("message", "Faltan parámetros");
                 return ResponseEntity.status(400).body(response);
             }
 
@@ -114,24 +105,27 @@ public class UserController {
             }
 
             User user = userDao.findByPhoneNumber(cleanNumber);
-            if (user == null && !cleanNumber.equals(phoneNumber)) {
-                user = userDao.findByPhoneNumber(phoneNumber);
-            }
 
             if (user != null && user.getPassword().equals(password)) {
                 response.put("status", "success");
-                response.put("message", "Autenticación exitosa");
+                response.put("message", "Bienvenido a Velo");
                 response.put("uuid", user.getUuid()); 
+                
+                // 🔥 ESTO ES LO QUE FALTABA: Enviar los datos para que la App los guarde
+                response.put("userName", user.getUserName());
+                response.put("email", user.getEmail());
+                // response.put("work", user.getWork()); // Activa esto cuando añadas 'work' a User.java
+                
                 return ResponseEntity.ok(response);
             } else {
                 response.put("status", "error");
-                response.put("message", "Número de teléfono o contraseña incorrectos");
+                response.put("message", "Credenciales inválidas");
                 return ResponseEntity.status(401).body(response);
             }
 
         } catch (Exception e) {
             response.put("status", "error");
-            response.put("message", "Error interno en login: " + e.getMessage());
+            response.put("message", "Error en login: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
@@ -144,7 +138,6 @@ public class UserController {
         List<Map<String, Object>> responseList = new ArrayList<>();
         Map<String, Object> responseMap = new HashMap<>();
         
-        String originalNumber = number;
         String cleanNumber = number.replaceAll("[^0-9]", "");
         if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
             cleanNumber = cleanNumber.substring(2);
@@ -155,19 +148,11 @@ public class UserController {
         
         try {
             User foundUser = userDao.findByPhoneNumber(cleanNumber);
-            if (foundUser == null && !cleanNumber.equals(originalNumber)) {
-                foundUser = userDao.findByPhoneNumber(originalNumber);
-            }
-            
             if (foundUser != null) {
-                resolvedName = "Usuario Registrado";
+                resolvedName = foundUser.getUserName(); // Mostrar el nombre REAL del usuario si está registrado
             }
 
             List<Report> reportList = reportDao.findByPhoneNumber(cleanNumber);
-            if ((reportList == null || reportList.isEmpty()) && !cleanNumber.equals(originalNumber)) {
-                reportList = reportDao.findByPhoneNumber(originalNumber);
-            }
-            
             if (reportList != null && !reportList.isEmpty()) {
                 Report reportRecord = reportList.get(0);
                 if (reportRecord != null) {
@@ -185,8 +170,6 @@ public class UserController {
             return ResponseEntity.ok(responseList);
             
         } catch (Exception e) {
-            responseMap.put("number", cleanNumber);
-            responseMap.put("spammer", false);
             responseMap.put("name", "Desconocido");
             responseList.add(responseMap);
             return ResponseEntity.status(500).body(responseList);
