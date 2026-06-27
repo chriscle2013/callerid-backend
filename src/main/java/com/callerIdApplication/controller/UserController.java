@@ -29,17 +29,13 @@ public class UserController {
         try {
             String phoneNumber = payload.containsKey("phoneNumber") ? String.valueOf(payload.get("phoneNumber")) : null;
             String password = payload.containsKey("password") ? String.valueOf(payload.get("password")) : null;
-            
-            // Captura flexible de nombres para la App
             String userName = payload.containsKey("userName") ? String.valueOf(payload.get("userName")) : "Usuario Velo";
-            if (payload.containsKey("name")) userName = String.valueOf(payload.get("name"));
-            
             String email = payload.containsKey("email") ? String.valueOf(payload.get("email")) : "";
             String work = payload.containsKey("work") ? String.valueOf(payload.get("work")) : "";
 
             if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
                 response.put("status", "error");
-                response.put("message", "Falta número de teléfono");
+                response.put("message", "Falta phoneNumber");
                 return ResponseEntity.status(400).body(response);
             }
 
@@ -55,23 +51,21 @@ public class UserController {
                 if (password != null) existingUser.setPassword(password);
                 existingUser.setUserName(userName);
                 existingUser.setEmail(email);
-                // Si agregaste el campo work en la entidad User:
-                // existingUser.setWork(work); 
+                existingUser.setWork(work); // Guardar profesión
                 savedUser = userDao.save(existingUser);
-                response.put("message", "Perfil actualizado con éxito.");
+                response.put("message", "Perfil actualizado.");
             } else {
                 User newUser = new User();
                 newUser.setPhoneNumber(cleanRegNumber);
                 newUser.setPassword(password != null ? password : "123456");
                 newUser.setUserName(userName);
                 newUser.setEmail(email);
-                // newUser.setWork(work);
+                newUser.setWork(work);
 
                 long timeSeed = System.currentTimeMillis() % 899999L;
                 newUser.setUserId((int) (100000 + timeSeed));
-
                 savedUser = userDao.save(newUser);
-                response.put("message", "Usuario registrado exitosamente.");
+                response.put("message", "Registro exitoso.");
             }
 
             response.put("status", "success");
@@ -81,7 +75,7 @@ public class UserController {
 
         } catch (Exception e) {
             response.put("status", "error");
-            response.put("message", "Error en registro: " + e.getMessage());
+            response.put("message", "Falla: " + e.getMessage());
             return ResponseEntity.status(400).body(response);
         }
     }
@@ -93,12 +87,6 @@ public class UserController {
             String phoneNumber = credentials.get("phoneNumber");
             String password = credentials.get("password");
 
-            if (phoneNumber == null || password == null) {
-                response.put("status", "error");
-                response.put("message", "Faltan parámetros");
-                return ResponseEntity.status(400).body(response);
-            }
-
             String cleanNumber = phoneNumber.replaceAll("[^0-9]", "");
             if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
                 cleanNumber = cleanNumber.substring(2);
@@ -108,24 +96,22 @@ public class UserController {
 
             if (user != null && user.getPassword().equals(password)) {
                 response.put("status", "success");
-                response.put("message", "Bienvenido a Velo");
                 response.put("uuid", user.getUuid()); 
                 
-                // 🔥 ESTO ES LO QUE FALTABA: Enviar los datos para que la App los guarde
+                // 🔥 ESTO ES LO QUE RESTAURA TU PERFIL AL VOLVER A ENTRAR
                 response.put("userName", user.getUserName());
                 response.put("email", user.getEmail());
-                // response.put("work", user.getWork()); // Activa esto cuando añadas 'work' a User.java
+                response.put("work", user.getWork()); 
                 
                 return ResponseEntity.ok(response);
             } else {
                 response.put("status", "error");
-                response.put("message", "Credenciales inválidas");
+                response.put("message", "Credenciales incorrectas");
                 return ResponseEntity.status(401).body(response);
             }
-
         } catch (Exception e) {
             response.put("status", "error");
-            response.put("message", "Error en login: " + e.getMessage());
+            response.put("message", "Error: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
@@ -143,23 +129,25 @@ public class UserController {
             cleanNumber = cleanNumber.substring(2);
         }
         
-        boolean isSpammer = false;
-        String resolvedName = "Unknown";
-        
         try {
             User foundUser = userDao.findByPhoneNumber(cleanNumber);
+            String resolvedName = "Unknown";
+            boolean isSpammer = false;
+
             if (foundUser != null) {
-                resolvedName = foundUser.getUserName(); // Mostrar el nombre REAL del usuario si está registrado
+                resolvedName = foundUser.getUserName();
+                // Si el usuario tiene un trabajo/empresa, lo mostramos
+                if (foundUser.getWork() != null && !foundUser.getWork().isEmpty()) {
+                    resolvedName += " (" + foundUser.getWork() + ")";
+                }
             }
 
             List<Report> reportList = reportDao.findByPhoneNumber(cleanNumber);
             if (reportList != null && !reportList.isEmpty()) {
                 Report reportRecord = reportList.get(0);
-                if (reportRecord != null) {
-                    isSpammer = reportRecord.isSpammer(); 
-                    if (isSpammer) {
-                        resolvedName = (reportRecord.getCategory() != null) ? "Reporte: " + reportRecord.getCategory() : "SPAM";
-                    }
+                isSpammer = reportRecord.isSpammer(); 
+                if (isSpammer) {
+                    resolvedName = (reportRecord.getCategory() != null) ? "Alerta: " + reportRecord.getCategory() : "SPAM";
                 }
             }
             
