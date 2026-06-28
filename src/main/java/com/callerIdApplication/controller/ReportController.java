@@ -104,4 +104,19 @@ public class ReportController {
             return ResponseEntity.status(500).body(response);
         }
     }
+    
+    // 📡 NUEVO: Endpoint para el Radar en Vivo de la App
+    @GetMapping("/report/latest")
+    public ResponseEntity<List<Report>> getLatestReports(@RequestParam String key) {
+        // Obtenemos los últimos 5 reportes reales de la base de datos
+        List<Report> latest = reportDao.findAll(); 
+    
+        // Ordenamos por los más recientes y tomamos solo los primeros 5
+        List<Report> result = latest.stream()
+            .sorted((r1, r2) -> r2.getId().compareTo(r1.getId())) // Suponiendo que ID es secuencial
+            .limit(5)
+            .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(result);
+    }
 }
