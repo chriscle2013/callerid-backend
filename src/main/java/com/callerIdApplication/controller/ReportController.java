@@ -124,4 +124,11 @@ public class ReportController {
             return ResponseEntity.status(500).build();
         }
     }
+    // 📊 NUEVO: Obtener el conteo total de spam en la red
+    @GetMapping("/report/count")
+    public ResponseEntity<Map<String, Long>> getReportCount() {
+        Map<String, Long> response = new HashMap<>();
+        response.put("total", reportDao.count());
+        return ResponseEntity.ok(response);
+    }
 }
